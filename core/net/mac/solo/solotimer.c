@@ -32,6 +32,7 @@
 #define DEBUG 0
 #endif
 
+#include <stdio.h>
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -99,6 +100,13 @@ timer_callback(void *ptr)
 static void
 input_packet(void)
 {
+  unsigned char* delay_ptr = packetbuf_dataptr() + packetbuf_datalen() - 2;
+  
+  printf("Delay: %u\n", *(uint16_t *) delay_ptr);
+
+  /* Remove delay field. */
+  packetbuf_set_datalen(packetbuf_datalen() - 2);
+
   clock_time_t recv_time = clock_time();
   uint8_t addr[8];
   linkaddr_copy((linkaddr_t *)&addr, 
@@ -114,7 +122,7 @@ input_packet(void)
   //PRINTF("solotimer: recv time %lu, recv phase %lu\n", 
   //       recv_time, ((next_time - recv_time) % SOLO_CYCLE_TIME) * 100 / SOLO_CYCLE_TIME);
   
-  clock_time_t target = recv_time + SOLO_CYCLE_TIME / NEIGHBOR_CONF_SIZE;
+  clock_time_t target = recv_time + SOLO_CYCLE_TIME / NEIGHBOR_SIZE;
   if (next_time < target) {
     next_time = next_time / 2 + target / 2;
     adjustment = next_time - recv_time;
@@ -130,6 +138,9 @@ static void
 send_packet(mac_callback_t sent, void *ptr)
 {
   struct rdc_buf_list *q;
+  
+  /* Adding room for delay field. */
+  packetbuf_set_datalen(packetbuf_datalen() + sizeof(uint16_t));
   
   q = memb_alloc(&packet_memb);
   if (q == NULL) {

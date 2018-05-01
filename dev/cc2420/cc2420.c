@@ -83,6 +83,8 @@ enum write_ram_order {
   WRITE_RAM_REVERSE
 };
 
+#include <stdio.h>
+
 #define DEBUG 0
 #if DEBUG
 #include <stdio.h>
@@ -160,6 +162,11 @@ uint8_t cc2420_last_correlation;
 
 static uint8_t receive_on;
 static int channel;
+
+/*---------------------------------------------------------------------------*/
+// Added for timing info
+static uint16_t prepare_time;
+/*---------------------------------------------------------------------------*/
 
 static radio_result_t
 get_value(radio_param_t param, radio_value_t *value)
@@ -621,10 +628,15 @@ cc2420_init(void)
 static int
 cc2420_transmit(unsigned short payload_len)
 {
-  int i, txpower;
-  
-  GET_LOCK();
+  uint16_t transmit_time = RTIMER_NOW();
+  uint16_t delay = (transmit_time > prepare_time)? 
+                   transmit_time - prepare_time : 
+                   transmit_time + (~prepare_time) + 1;
 
+  int i, txpower;
+
+  GET_LOCK();
+  
   txpower = 0;
   if(packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER) > 0) {
     /* Remember the current transmission power */
@@ -665,6 +677,10 @@ cc2420_transmit(unsigned short payload_len)
           write_ram((uint8_t *) &sfd_timestamp, CC2420RAM_TXFIFO + payload_len - 1, 2, WRITE_RAM_IN_ORDER);
         }
 #endif
+        //printf("changing data\n");
+        write_ram((uint8_t *) &delay, CC2420RAM_TXFIFO + payload_len + 1 - 2, 2, WRITE_RAM_IN_ORDER);
+
+        //write_ram(&unchange, CC2420RAM_TXFIFO + payload_len + 1 - 6, 1, WRITE_RAM_IN_ORDER);
       }
 
       if(!(get_status() & BV(CC2420_TX_ACTIVE))) {
@@ -680,6 +696,7 @@ cc2420_transmit(unsigned short payload_len)
       ENERGEST_ON(ENERGEST_TYPE_TRANSMIT);
       /* We wait until transmission has ended so that we get an
 	 accurate measurement of the transmission time.*/
+
       wait_for_transmission();
 
 #ifdef ENERGEST_CONF_LEVELDEVICE_LEVELS
@@ -726,6 +743,7 @@ cc2420_prepare(const void *payload, unsigned short payload_len)
   GET_LOCK();
 
   PRINTF("cc2420: sending %d bytes\n", payload_len);
+  prepare_time = (uint16_t) RTIMER_NOW();
 
   RIMESTATS_ADD(lltx);
 
@@ -876,6 +894,7 @@ PROCESS_THREAD(cc2420_process, ev, data)
     packetbuf_clear();
     packetbuf_set_attr(PACKETBUF_ATTR_TIMESTAMP, last_packet_timestamp);
     len = cc2420_read(packetbuf_dataptr(), PACKETBUF_SIZE);
+
     
     packetbuf_set_datalen(len);
     
