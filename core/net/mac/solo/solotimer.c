@@ -8,6 +8,29 @@
 #include "lib/memb.h"
 #include "lib/list.h"
 #include "net/queuebuf.h"
+#include <stdlib.h>
+
+#ifdef CONTIKIMAC_CONF_CCA_SLEEP_TIME
+#define CCA_SLEEP_TIME CONTIKIMAC_CONF_CCA_SLEEP_TIME
+#else
+#if RTIMER_ARCH_SECOND > 8000
+#define CCA_SLEEP_TIME                     RTIMER_ARCH_SECOND / 2000
+#else
+#define CCA_SLEEP_TIME                     (RTIMER_ARCH_SECOND / 2000) + 1
+#endif /* RTIMER_ARCH_SECOND > 8000 */
+#endif /* CONTIKIMAC_CONF_CCA_SLEEP_TIME */
+
+#ifdef CONTIKIMAC_CONF_CCA_CHECK_TIME
+#define CCA_CHECK_TIME                     (CONTIKIMAC_CONF_CCA_CHECK_TIME)
+#else
+#define CCA_CHECK_TIME                     RTIMER_ARCH_SECOND / 8192
+#endif
+
+#ifdef CONTIKIMAC_CONF_CCA_COUNT_MAX_TX
+#define CCA_COUNT_MAX_TX                   (CONTIKIMAC_CONF_CCA_COUNT_MAX_TX)
+#else
+#define CCA_COUNT_MAX_TX                   6
+#endif
 
 #ifdef CONTIKIMAC_CONF_CYCLE_TIME
 #define CYCLE_TIME (CONTIKIMAC_CONF_CYCLE_TIME)
@@ -22,9 +45,11 @@
 #define NEIGHBOR_SIZE 2
 #endif
 
+#define FAIR_SHARE (2 * CYCLE_TIME)
+
 /* Solo timer interval, in rtimer ticks. */
 //#define SOLO_CYCLE_TIME (RTIMER_ARCH_SECOND)
-#define SOLO_CYCLE_TIME (3 * CYCLE_TIME * NEIGHBOR_SIZE)
+#define SOLO_CYCLE_TIME (NEIGHBOR_SIZE * FAIR_SHARE)
 
 #ifdef SOLOTIMER_CONF_DEBUG
 #define DEBUG SOLOTIMER_CONF_DEBUG
@@ -32,7 +57,7 @@
 #define DEBUG 0
 #endif
 
-#include <stdio.h>
+
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -47,8 +72,9 @@ LIST(packet_list);
 
 static struct ctimer ct;
 static volatile uint8_t solotimer_is_on = 0;
-static clock_time_t next_time;
-static clock_time_t adjustment = 0;
+static volatile clock_time_t my_offset;
+static volatile clock_time_t last_offset;
+static volatile clock_time_t adjustment = 0;
 static void timer_callback(void *ptr);
 
 
@@ -66,12 +92,28 @@ packet_sent(void *ptr, int status, int num_transmissions)
       break;
   }
 }
+/*---------------------------------------------------------------------------*/
 static void
 timer_callback(void *ptr)
 {
+  ctimer_set(&ct, SOLO_CYCLE_TIME, timer_callback, NULL);
+  clock_time_t my_time = clock_time();
+  my_offset = my_time % SOLO_CYCLE_TIME;
+
   struct rdc_buf_list *q = list_head(packet_list);
   if (q != NULL) {
-    PRINTF("solotimer: calling RDC to send.\n");
+    PRINTF("solotimer: firing: my time %lu\n", my_time);
+    //PRINTF("solotimer: firing: my phase %lu\n", 
+    //       my_offset % SOLO_CYCLE_TIME * 100 / SOLO_CYCLE_TIME);
+
+    if (my_offset < last_offset) {
+      my_offset = my_offset + SOLO_CYCLE_TIME - last_offset;
+      last_offset = 0;
+    }
+    //PRINTF("solotimer: firing: phase diff %lu\n", 
+    //       (my_offset - last_offset) % SOLO_CYCLE_TIME * 100 / SOLO_CYCLE_TIME);
+   
+    my_offset = my_time % SOLO_CYCLE_TIME;
     
     queuebuf_to_packetbuf(q->buf);
 
@@ -82,32 +124,40 @@ timer_callback(void *ptr)
     //       list_length(packet_list), memb_numfree(&packet_memb));
 
     NETSTACK_RDC.send(packet_sent, ptr);
+
   }
-  //else {
-  //  PRINTF("solotimer: no packet to send.\n");
-  //}
-  if (adjustment == 0) {
-    ctimer_reset(&ct);
-  }
-  else {
-    ctimer_set(&ct, SOLO_CYCLE_TIME, timer_callback, NULL);
-  }
-  next_time = next_time + SOLO_CYCLE_TIME;
 
   adjustment = 0;
 }
 /*---------------------------------------------------------------------------*/
+static unsigned long int
+clocktick_to_ms(unsigned long int tick) {
+  return tick * 1000 / CLOCK_SECOND;
+}
+
+/*---------------------------------------------------------------------------*/
 static void
 input_packet(void)
 {
+  clock_time_t curr_time = clock_time();
   unsigned char* delay_ptr = packetbuf_dataptr() + packetbuf_datalen() - 2;
-  
-  printf("Delay: %u\n", *(uint16_t *) delay_ptr);
+
+  rtimer_clock_t delay_rt = *(rtimer_clock_t *)delay_ptr;
+  delay_rt += (CCA_SLEEP_TIME + CCA_CHECK_TIME) * CCA_COUNT_MAX_TX;
+  clock_time_t delay_ct = delay_rt / 256 + 1;
+
+  //unsigned long int delay_ms = clocktick_to_ms(delay_ct);
+  //PRINTF("Delay: %lu ms\n", delay_ms);
+
 
   /* Remove delay field. */
   packetbuf_set_datalen(packetbuf_datalen() - 2);
 
-  clock_time_t recv_time = clock_time();
+  clock_time_t recv_time = curr_time - delay_ct;
+  if (curr_time < delay_ct) {
+    PRINTF("calibration overflow\n");
+  }
+
   uint8_t addr[8];
   linkaddr_copy((linkaddr_t *)&addr, 
                 packetbuf_addr(PACKETBUF_ADDR_SENDER)); 
@@ -118,18 +168,62 @@ input_packet(void)
   //       longaddr[0], longaddr[1], longaddr[2], longaddr[3],
   //       longaddr[4], longaddr[5], longaddr[6], longaddr[7]);
   //
-
-  //PRINTF("solotimer: recv time %lu, recv phase %lu\n", 
-  //       recv_time, ((next_time - recv_time) % SOLO_CYCLE_TIME) * 100 / SOLO_CYCLE_TIME);
   
-  clock_time_t target = recv_time + SOLO_CYCLE_TIME / NEIGHBOR_SIZE;
-  if (next_time < target) {
-    next_time = next_time / 2 + target / 2;
-    adjustment = next_time - recv_time;
-    
-    PRINTF("solotimer: time until next send: %lu\n", CLOCK_SECOND);
+  unsigned long int recv_offset = recv_time % SOLO_CYCLE_TIME;
+  unsigned long int next_offset = my_offset;
+
+  last_offset = recv_offset;
+
+  PRINTF("actual recv offset: %lu\n", 
+         curr_time % SOLO_CYCLE_TIME * 100 / SOLO_CYCLE_TIME);
+  PRINTF("calibr recv offset: %lu\n", 
+         recv_offset % SOLO_CYCLE_TIME * 100 / SOLO_CYCLE_TIME); 
+
+  if (next_offset < recv_offset) {
+    //PRINTF("solotimer: COUNTER overflow!\n");
+    next_offset = next_offset + SOLO_CYCLE_TIME - recv_offset;
+    recv_offset = 0;
+  }
+  
+  unsigned long int target_offset = 
+    (recv_offset + FAIR_SHARE) % SOLO_CYCLE_TIME;
+
+  unsigned long int space = 
+    (next_offset + SOLO_CYCLE_TIME - recv_offset) % SOLO_CYCLE_TIME;
+  
+  if (space < FAIR_SHARE) {
+    PRINTF("current diff %lu / %lu\n", 
+           (next_offset + SOLO_CYCLE_TIME - recv_offset) % SOLO_CYCLE_TIME,
+           SOLO_CYCLE_TIME);
+
+    PRINTF("recv   offset %lu / %lu\n", recv_offset, SOLO_CYCLE_TIME);
+    PRINTF("next   offset %lu / %lu\n", next_offset, SOLO_CYCLE_TIME);
+    PRINTF("target offset %lu / %lu\n", target_offset, SOLO_CYCLE_TIME);
+
+    if (target_offset >= next_offset)
+      next_offset = (next_offset + target_offset) / 2;
+    else
+      next_offset = (next_offset + SOLO_CYCLE_TIME + target_offset) / 2;
+
+    my_offset = next_offset;
+
+    PRINTF("new    offset %lu / %lu\n", next_offset, SOLO_CYCLE_TIME);
+    PRINTF("delay  offset %lu / %lu\n", delay_ct, SOLO_CYCLE_TIME);
+
+    adjustment = 
+      (next_offset + 2 * SOLO_CYCLE_TIME - recv_offset - delay_ct) % SOLO_CYCLE_TIME;
+
+    PRINTF("adjusted diff %lu / %lu\n", 
+           (next_offset + 2 * SOLO_CYCLE_TIME - recv_offset) % SOLO_CYCLE_TIME,
+           SOLO_CYCLE_TIME);
+    if (next_offset < recv_offset)
+      PRINTF("solotimer: COUNTER overflow on adjustment!\n");
+
+    my_offset = (curr_time + adjustment) % SOLO_CYCLE_TIME;
     ctimer_set(&ct, adjustment, timer_callback, NULL);
-  } 
+    PRINTF("backoff %lu / %lu\n", adjustment, SOLO_CYCLE_TIME);
+  }
+
   
   NETSTACK_LLSEC.input();
 }
@@ -169,7 +263,7 @@ on(void)
   if (solotimer_is_on == 0) {
     solotimer_is_on = 1;
     ctimer_set(&ct, SOLO_CYCLE_TIME, timer_callback, NULL);
-    next_time = clock_time() + SOLO_CYCLE_TIME;
+    my_offset = clock_time() % SOLO_CYCLE_TIME;
   }
 
   return NETSTACK_RDC.on();
@@ -195,10 +289,20 @@ static void
 init(void)
 {
   memb_init(&packet_memb);
+
+  srand((unsigned int)RTIMER_NOW());
   
   ctimer_set(&ct, SOLO_CYCLE_TIME, timer_callback, NULL);
-  next_time = clock_time() + SOLO_CYCLE_TIME;
+  my_offset = clock_time() % SOLO_CYCLE_TIME;
   solotimer_is_on = 1;
+
+  
+  PRINTF("CCA TIME: %lu\n", 
+         (unsigned long int)(CCA_SLEEP_TIME + CCA_CHECK_TIME));
+  
+  //PRINTF("solotimer: clock second %lu\n", CLOCK_SECOND);
+  //PRINTF("solotimer: cycle %lu\n", CYCLE_TIME);
+  //PRINTF("solotimer: solo cycle %lu\n", SOLO_CYCLE_TIME);
 }
 /*---------------------------------------------------------------------------*/
 const struct mac_driver solotimer_driver = {
