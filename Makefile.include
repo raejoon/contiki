@@ -78,6 +78,10 @@ ifeq ($(CONTIKI_WITH_RIME),1)
   MODULES += core/net/rime
 endif
 
+ifeq ($(CONTIKI_WITH_RAEJOON),1)
+  MODULES += core/net/raejoon
+endif
+
 # Make IPv6 the default stack
 ifeq ($(HAS_STACK),0)
 ifneq ($(CONTIKI_WITH_IPV6),0)
