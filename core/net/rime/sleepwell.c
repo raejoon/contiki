@@ -73,6 +73,6 @@ sleepwell_close(struct sleepwell_conn *c)
 void
 sleepwell_start(struct sleepwell_conn *c)
 {
-  ctimer_set(&c->timer, random_rand() % c->interval + c->interval, 
+  ctimer_set(&c->timer, c->interval * c->id / 50 + c->interval, 
              timer_callback, c); 
 }
