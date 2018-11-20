@@ -18,6 +18,7 @@ int neighbor_add(const uint8_t id) {
   if (n == NULL) {
     n = memb_alloc(&neighbors_memb);
     if (n == NULL) {
+      printf("neighbor_add: cannot alloc memory!\n");
       return -1;
     }
     n->id = id;
