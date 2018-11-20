@@ -16,7 +16,6 @@ struct sleepwell_conn {
   const struct sleepwell_callbacks *cb;
   struct ctimer timer;
   uint16_t my_offset;
-  clock_time_t expiry;
   clock_time_t interval;
   uint16_t id;
 };

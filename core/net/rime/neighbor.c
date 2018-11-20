@@ -1,5 +1,6 @@
 #include "net/rime/neighbor.h"
 #include "lib/memb.h"
+#include <stdio.h>
 
 #define MAX_NEIGHBORS 16
 

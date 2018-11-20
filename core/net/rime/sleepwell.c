@@ -40,7 +40,6 @@ send_beacon(struct sleepwell_conn *c)
 static void
 beacon_received(struct broadcast_conn* bc, const linkaddr_t *from)
 {
-  struct sleepwell_conn *c = (struct sleepwell_conn *) bc;
   struct msg buf;
   
   memcpy(&buf, packetbuf_dataptr(), sizeof(buf));
@@ -109,8 +108,6 @@ share(uint16_t my_offset, int interval) {
   uint16_t min_diff = interval;
   for (n = neighbor_head(); n != NULL; n = neighbor_next(n)) {
     diff = (n->timestamp % interval + interval - my_offset) % interval;
-    printf("timestamp of %d: %u\n", n->id, (uint16_t)n->timestamp);
-    printf("distance with %d: %d/%d\n", n->id, diff, interval);
     if (diff < min_diff)
       min_diff = diff;
   }
@@ -121,7 +118,7 @@ share(uint16_t my_offset, int interval) {
 static int
 adjust(uint16_t my_offset, int interval)
 {
-  int nsize, claim, prev_offset;
+  int nsize, claim;
   struct gap max_gap;
 
   nsize = neighbor_size();
@@ -133,33 +130,14 @@ adjust(uint16_t my_offset, int interval)
     return -1;
   }
   
-  prev_offset = my_offset;
   max_gap = largest_gap(interval);
-  printf("Max gap: %d - %d (%d)\n", max_gap.start, max_gap.end, max_gap.size);
 
   if (max_gap.size >= claim * 2)
     my_offset = (max_gap.start + max_gap.size / 2) % interval;
   else
     my_offset = (max_gap.end + interval - claim) % interval;
 
-  printf("Adjustment %d -> %d\n", prev_offset, my_offset);
-  
   return my_offset;
-}
-/*---------------------------------------------------------------------------*/
-static int
-eta_from_offset(int offset, int expiry, int interval)
-{
-  int diff = offset - expiry % interval;
-  if (2 * diff < interval / 2 && 2 * diff >= -interval)
-    return interval + diff;
-  else {
-    if (diff < 0)
-      return interval + (diff + interval);
-    else {
-      return interval + (diff - interval);
-    }
-  }
 }
 /*---------------------------------------------------------------------------*/
 static int
@@ -175,17 +153,20 @@ eta_from_current_time(uint16_t offset, int interval)
 static void
 timer_callback(void *ptr)
 {
-  int interval, offset;
+  int interval, offset, nsize;
   struct sleepwell_conn *c = ptr;
   interval = (int) c->interval;
 
   send_beacon(c);
+
+  nsize = neighbor_size();
+  printf("neighbor size: %d\n", nsize);
   
   offset = adjust(c->my_offset, interval);
   if (offset != -1) {
     c->my_offset = offset;
   }
-  printf("my offset: %u\n", c->my_offset);
+
   
   ctimer_set(&c->timer, 
              eta_from_current_time(c->my_offset, c->interval), 
@@ -217,9 +198,10 @@ sleepwell_close(struct sleepwell_conn *c)
 void
 sleepwell_start(struct sleepwell_conn *c)
 {
-  int interval;
-  c->expiry = clock_time() + c->interval + c->interval * c->id / 50;
-  c->my_offset = c->expiry % c->interval;
+  uint16_t expiry;
+  
+  expiry = clock_time() + c->interval + c->interval * c->id / 50;
+  c->my_offset = expiry % c->interval;
   ctimer_set(&c->timer, 
              eta_from_current_time(c->my_offset, c->interval), 
              timer_callback, c); 
