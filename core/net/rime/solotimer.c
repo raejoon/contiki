@@ -41,21 +41,22 @@ adjust(uint16_t my_offset, int interval)
   uint16_t your_offset, your_distance, target_offset, target_distance, gap;
 
   your_offset = clock_time() % interval;
-  your_distance = (your_offset + interval - my_offset) % interval;
-  
+  your_distance = (my_offset + interval - your_offset) % interval;
+
   target_distance = interval / (neighbor_size() + 1);
-  
+
   if (your_distance >= target_distance) {
     return -1;
   }
-  
-  target_offset = (your_offset + interval - target_distance) % interval;
-  gap = (my_offset + interval - target_offset) % interval;
+
+  target_offset = (your_offset + target_distance) % interval;
+  gap = (target_offset + interval - my_offset) % interval;
   gap = gap / 2;
-  my_offset = (my_offset + interval - gap) % interval;
-  
+  my_offset = (my_offset + interval + gap) % interval;
+
   return my_offset;
 }
+
 /*---------------------------------------------------------------------------*/
 static int
 eta_from_current_time(uint16_t offset, int interval)
@@ -63,6 +64,13 @@ eta_from_current_time(uint16_t offset, int interval)
   int eta = (offset + interval - (clock_time() % interval)) % interval;
   if (2*eta > 3*interval) eta -=  interval;
   else if (2*eta < interval) eta +=  interval;
+  return eta;
+}
+/*---------------------------------------------------------------------------*/
+static int
+eta_from_current_time_immediate(uint16_t offset, int interval)
+{
+  int eta = (offset + interval - (clock_time() % interval)) % interval;
   return eta;
 }
 /*---------------------------------------------------------------------------*/
@@ -115,13 +123,11 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
   offset = adjust(c->my_offset, interval);
   if (offset != -1) {
 #if DEBUG
-    //if ((c->my_offset + interval - offset) % interval < 5) {
-      PRINTF("ADJUSTMENT CAUSED BY %d\n", buf.id);
-    //}
+    PRINTF("ADJUSTMENT CAUSED BY %d\n", buf.id);
 #endif
     c->my_offset = offset;
     ctimer_set(&c->timer,
-               eta_from_current_time(c->my_offset, interval),
+               eta_from_current_time_immediate(c->my_offset, interval),
                timer_callback, c);
   }
 }
