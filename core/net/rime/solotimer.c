@@ -17,6 +17,7 @@
 
 struct msg {
   uint16_t id;
+  uint16_t nsize;
   char dummy;
 };
 
@@ -31,24 +32,24 @@ send_beacon(struct solotimer_conn *c)
   packetbuf_set_datalen(sizeof(struct msg));
   hdr = packetbuf_dataptr();
   hdr->id = c->id;
+  hdr->nsize = neighbor_size();
   broadcast_send(&c->c);
   printf("Broadcast %d\n", c->id);
 }
 /*---------------------------------------------------------------------------*/
 static int
-adjust(uint16_t my_offset, int interval)
+adjust(uint16_t my_offset, int interval, uint16_t your_nsize)
 {
   uint16_t your_offset, your_distance, target_offset, target_distance, gap;
 
   your_offset = clock_time() % interval;
   your_distance = (my_offset + interval - your_offset) % interval;
 
-  target_distance = interval / (neighbor_size() + 1);
-
+  target_distance = interval / (your_nsize + 1);
   if (your_distance >= target_distance) {
     return -1;
   }
-
+  
   target_offset = (your_offset + target_distance) % interval;
   gap = (target_offset + interval - my_offset) % interval;
   gap = gap / 2;
@@ -56,7 +57,6 @@ adjust(uint16_t my_offset, int interval)
 
   return my_offset;
 }
-
 /*---------------------------------------------------------------------------*/
 static int
 eta_from_current_time(uint16_t offset, int interval)
@@ -120,7 +120,7 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
     printf("Deficit %d/%d/%d\n", claim - share, claim, interval);
   }
 
-  offset = adjust(c->my_offset, interval);
+  offset = adjust(c->my_offset, interval, buf.nsize);
   if (offset != -1) {
 #if DEBUG
     PRINTF("ADJUSTMENT CAUSED BY %d\n", buf.id);
