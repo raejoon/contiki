@@ -32,22 +32,36 @@ send_beacon(struct sleepwell_conn *c)
   hdr = packetbuf_dataptr();
   hdr->id = c->id;
   broadcast_send(&c->c);
-  printf("%d.%d: Sending sleepwell beacon with id %d\n",
-         linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1],
-         c->id);
+  //printf("%d.%d: Sending sleepwell beacon with id %d\n",
+  //       linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1],
+  //       c->id);
+  printf("Broadcast %d\n", c->id);
 }
 /*---------------------------------------------------------------------------*/
 static void
 beacon_received(struct broadcast_conn* bc, const linkaddr_t *from)
 {
+  int nsize, claim, share;
   struct msg buf;
+  struct sleepwell_conn* c = (struct sleepwell_conn *) bc;
+  int interval = c->interval;
   
   memcpy(&buf, packetbuf_dataptr(), sizeof(buf));
-  printf("%d.%d: Sleepwell beacon received from %d.%d with id %d\n",
-         linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1],
-         from->u8[0], from->u8[1], buf.id);
+  //printf("%d.%d: Sleepwell beacon received from %d.%d with id %d\n",
+  //       linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1],
+  //       from->u8[0], from->u8[1], buf.id);
+  printf("Receive %d\n", buf.id);
 
   neighbor_add(buf.id);
+
+  if (c->is_myslot == 1) {
+    nsize = neighbor_size();
+    claim = interval / (1 + nsize);
+    share = ((clock_time() % interval) + interval - c->my_offset) % interval;
+    printf("SlotLength %d/%d\n", share, interval);
+    printf("Deficit %d/%d/%d\n", claim - share, claim, interval);  
+    c->is_myslot = 0;
+  }
 }
 /*---------------------------------------------------------------------------*/
 int intcmp (const void *a, const void *b) {
@@ -153,14 +167,21 @@ eta_from_current_time(uint16_t offset, int interval)
 static void
 timer_callback(void *ptr)
 {
-  int interval, offset, nsize;
+  int interval, offset, nsize, claim;
   struct sleepwell_conn *c = ptr;
   interval = (int) c->interval;
 
   send_beacon(c);
 
   nsize = neighbor_size();
-  printf("neighbor size: %d\n", nsize);
+  printf("Nsize %d\n", nsize);
+  
+  if (c->is_myslot == 1) {
+    claim = interval / (1 + nsize);
+    printf("SlotLength %d/%d\n", interval, interval);
+    printf("Deficit %d/%d/%d\n", claim - interval, claim, interval);  
+  }
+  c->is_myslot = 1;
   
   offset = adjust(c->my_offset, interval);
   if (offset != -1) {

@@ -18,6 +18,7 @@ struct sleepwell_conn {
   uint16_t my_offset;
   clock_time_t interval;
   uint16_t id;
+  int is_myslot;
 };
 
 void sleepwell_open(struct sleepwell_conn *c, uint16_t channel,
