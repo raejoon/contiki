@@ -7,7 +7,9 @@
 #include "net/rime/neighbor.h"
 #include "lib/random.h"
 
-#define MAX_NEIGHBORS 16
+#define MAX_NEIGHBORS 32
+
+#define RANDOMSTART 1
 
 struct msg {
   uint16_t id;
@@ -164,6 +166,13 @@ eta_from_current_time(uint16_t offset, int interval)
 }
 
 /*---------------------------------------------------------------------------*/
+static int
+eta_from_current_time_immediate(uint16_t offset, int interval)
+{
+  int eta = (offset + interval - (clock_time() % interval)) % interval;
+  return eta;
+}
+/*---------------------------------------------------------------------------*/
 static void
 timer_callback(void *ptr)
 {
@@ -220,10 +229,15 @@ void
 sleepwell_start(struct sleepwell_conn *c)
 {
   uint16_t expiry;
-  
+
+#if RANDOMSTART
+  expiry = clock_time() + c->interval + random_rand() % c->interval;
+#else
   expiry = clock_time() + c->interval + c->interval * c->id / 50;
+#endif
+
   c->my_offset = expiry % c->interval;
   ctimer_set(&c->timer, 
-             eta_from_current_time(c->my_offset, c->interval), 
+             eta_from_current_time_immediate(c->my_offset, c->interval), 
              timer_callback, c); 
 }
