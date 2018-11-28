@@ -13,7 +13,9 @@
 #define PRINTF(...)
 #endif
 
-#define MAX_NEIGHBORS 16
+#define RANDOMSTART 1
+
+#define MAX_NEIGHBORS 30
 
 struct msg {
   uint16_t id;
@@ -35,6 +37,8 @@ send_beacon(struct solotimer_conn *c)
   hdr->nsize = neighbor_size();
   broadcast_send(&c->c);
   printf("Broadcast %d\n", c->id);
+
+  if (c->started == 0) c->started = 1;
 }
 /*---------------------------------------------------------------------------*/
 static int
@@ -101,7 +105,7 @@ timer_callback(void *ptr)
 static void
 beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
 {
-  int nsize, claim, share, offset;
+  int nsize, claim, share, offset, eta;
   struct msg buf;
   struct solotimer_conn *c = (struct solotimer_conn *) bc;
   int interval = c->interval;
@@ -122,13 +126,13 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
 
   offset = adjust(c->my_offset, interval, buf.nsize);
   if (offset != -1) {
+    eta = eta_from_current_time_immediate(c->my_offset, interval);
 #if DEBUG
     PRINTF("ADJUSTMENT CAUSED BY %d\n", buf.id);
+    PRINTF("SCHEDULE %d/%d\n", eta, interval);
 #endif
     c->my_offset = offset;
-    ctimer_set(&c->timer,
-               eta_from_current_time_immediate(c->my_offset, interval),
-               timer_callback, c);
+    ctimer_set(&c->timer, eta, timer_callback, c);
   }
 }
 /*---------------------------------------------------------------------------*/
@@ -145,6 +149,7 @@ solotimer_open(struct solotimer_conn *c, uint16_t channel,
   c->cb = cb;
   c->interval = interval;
   c->id = id;
+  c->started = 0;
 }
 /*---------------------------------------------------------------------------*/
 void 
@@ -157,11 +162,19 @@ solotimer_close(struct solotimer_conn *c)
 void
 solotimer_start(struct solotimer_conn *c)
 {
-  uint16_t expiry;
+  uint16_t expiry, eta;
 
+#if RANDOMSTART 
+  expiry = clock_time() + c->interval + random_rand() % c->interval;
+#else
   expiry = clock_time() + c->interval + c->interval * c->id / 50;
+#endif
+
   c->my_offset = expiry % c->interval;
-  ctimer_set(&c->timer,
-             eta_from_current_time(c->my_offset, c->interval),
-             timer_callback, c);
+  eta = eta_from_current_time_immediate(c->my_offset, c->interval);
+  ctimer_set(&c->timer, eta, timer_callback, c);
+
+#if DEBUG
+  PRINTF("SCHEDULE %d/%d\n", eta, (int)c->interval);
+#endif
 }

@@ -2,7 +2,7 @@
 #include "lib/memb.h"
 #include <stdio.h>
 
-#define MAX_NEIGHBORS 16
+#define MAX_NEIGHBORS 30
 
 MEMB(neighbors_memb, struct neighbor, MAX_NEIGHBORS);
 LIST(neighbors_list);
