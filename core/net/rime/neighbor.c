@@ -53,3 +53,18 @@ struct neighbor* neighbor_head() {
 struct neighbor* neighbor_next(struct neighbor* curr) {
   return list_item_next(curr);
 }
+
+struct neighbor* neighbor_predecessor(uint16_t offset, uint16_t interval) {
+  uint16_t diff;
+  uint16_t min_diff = interval;
+  struct neighbor* n;
+  struct neighbor* pred = NULL;
+  for (n = neighbor_head(); n!= NULL; n = neighbor_next(n)) {
+    diff = (n->timestamp % interval + interval - offset) % interval;
+    if (diff < min_diff) {
+      min_diff = diff;
+      pred = n;
+    }
+  }
+  return pred;
+}

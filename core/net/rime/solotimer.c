@@ -15,6 +15,8 @@
 
 #define RANDOMSTART 1
 
+#define CLAMPING 1
+
 #define MAX_NEIGHBORS 30
 
 struct msg {
@@ -45,6 +47,10 @@ static int
 adjust(uint16_t my_offset, int interval, uint16_t your_nsize)
 {
   uint16_t your_offset, your_distance, target_offset, target_distance, gap;
+#if CLAMPING 
+  struct neighbor *predecessor;
+  uint16_t pred_offset, pred_distance;
+#endif
 
   your_offset = clock_time() % interval;
   your_distance = (my_offset + interval - your_offset) % interval;
@@ -53,9 +59,18 @@ adjust(uint16_t my_offset, int interval, uint16_t your_nsize)
   if (your_distance >= target_distance) {
     return -1;
   }
-  
+
   target_offset = (your_offset + target_distance) % interval;
+
   gap = (target_offset + interval - my_offset) % interval;
+
+#if CLAMPING
+  predecessor = neighbor_predecessor();
+  pred_offset = predecessor->timestamp % interval;
+  pred_distance = (pred_offset + interval - my_offset) % interval;
+  gap = (gap < pred_distance)? gap : pred_distance;
+#endif 
+
   gap = gap / 2;
   my_offset = (my_offset + interval + gap) % interval;
 
