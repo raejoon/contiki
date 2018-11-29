@@ -20,6 +20,7 @@ struct solotimer_conn {
   uint16_t id;
   int is_myslot;
   int started;
+  int need_reset;
 };
 
 void solotimer_open(struct solotimer_conn *c, uint16_t channel,

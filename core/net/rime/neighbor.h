@@ -18,7 +18,6 @@ int neighbor_size();
 
 struct neighbor* neighbor_head();
 struct neighbor* neighbor_next(struct neighbor* curr);
-
-
+struct neighbor* neighbor_predecessor(uint16_t offset, uint16_t interval);
 
 #endif

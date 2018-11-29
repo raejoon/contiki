@@ -14,18 +14,30 @@
 #endif
 
 #define RANDOMSTART 1
-
 #define CLAMPING 1
+#define PATHVECTOR 1
 
 #define MAX_NEIGHBORS 30
+#define MAX_PVLEN 30
 
 struct msg {
   uint16_t id;
   uint16_t nsize;
+#if PATHVECTOR
+  uint8_t pvlen;
+  uint8_t lvlen;
+  uint8_t pathvec[MAX_PVLEN];
+  uint8_t loopvec[MAX_PVLEN];
+#endif
   char dummy;
 };
 
-struct neighbor *n;
+#if PATHVECTOR
+static uint8_t pathvec[MAX_PVLEN];
+static uint8_t loopvec[MAX_PVLEN];
+static uint8_t pvlen;
+static uint8_t lvlen;
+#endif
 /*---------------------------------------------------------------------------*/
 static void
 send_beacon(struct solotimer_conn *c)
@@ -37,6 +49,15 @@ send_beacon(struct solotimer_conn *c)
   hdr = packetbuf_dataptr();
   hdr->id = c->id;
   hdr->nsize = neighbor_size();
+#if PATHVECTOR
+  hdr->pvlen = pvlen;
+  hdr->lvlen = lvlen;
+  memcpy(hdr->pathvec, pathvec, pvlen);
+  memcpy(hdr->loopvec, loopvec, lvlen);  
+  pvlen = 0;
+  lvlen = 0;
+#endif
+
   broadcast_send(&c->c);
   printf("Broadcast %d\n", c->id);
 
@@ -65,7 +86,7 @@ adjust(uint16_t my_offset, int interval, uint16_t your_nsize)
   gap = (target_offset + interval - my_offset) % interval;
 
 #if CLAMPING
-  predecessor = neighbor_predecessor();
+  predecessor = neighbor_predecessor(my_offset, interval);
   pred_offset = predecessor->timestamp % interval;
   pred_distance = (pred_offset + interval - my_offset) % interval;
   gap = (gap < pred_distance)? gap : pred_distance;
@@ -112,10 +133,37 @@ timer_callback(void *ptr)
   }
   c->is_myslot = 1;
 
+#if PATHVECTOR
+  if (c->need_reset == 1) {
+    c->my_offset = random_rand() % interval;
+    c->need_reset = 0;
+  }
+#endif
+
   ctimer_set(&c->timer,
              eta_from_current_time(c->my_offset, c->interval),
              timer_callback, c);
 }
+/*---------------------------------------------------------------------------*/
+#if PATHVECTOR
+static int
+array_index(uint8_t* arr, uint8_t len, uint8_t val) {
+  int ind;
+  for (ind = 0; ind < len; ind++) {
+    if (arr[ind] == val) return ind;
+  }
+  return -1;
+}
+/*---------------------------------------------------------------------------*/
+static int
+check_and_store_loop_from_pathvec(uint8_t my_id) {
+  int ind = array_index(pathvec, pvlen, my_id);
+  if (ind == -1) return 0;
+  
+  memcpy(loopvec, &pathvec[ind + 1], pvlen - (ind + 1));
+  return 1;
+}
+#endif
 /*---------------------------------------------------------------------------*/
 static void
 beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
@@ -127,7 +175,7 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
   
   memcpy(&buf, packetbuf_dataptr(), sizeof(buf));
   printf("Receive %d\n", buf.id);
-  
+
   neighbor_add(buf.id);
   if (c->is_myslot == 1)  {
     nsize = neighbor_size();
@@ -139,8 +187,34 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
     printf("Deficit %d/%d/%d\n", claim - share, claim, interval);
   }
 
+#if PATHVECTOR
+  if (array_index(buf.loopvec, buf.lvlen, c->id) == buf.lvlen - 1) {
+    lvlen = buf.lvlen;
+    memcpy(loopvec, buf.loopvec, lvlen);
+    pvlen = 0;  // no need to forward pathvec if resetting
+    c->need_reset = 1;
+    return;
+  } 
+#endif
+
   offset = adjust(c->my_offset, interval, buf.nsize);
   if (offset != -1) {
+#if PATHVECTOR
+    pvlen = buf.pvlen;
+    memcpy(pathvec, buf.pathvec, pvlen);
+    pathvec[pvlen] = (uint8_t) buf.id;
+    pvlen += 1;
+    
+    if (check_and_store_loop_from_pathvec(c->id) == 1) {
+      pvlen = 0;  // no need to forward pathvec if resetting
+      c->need_reset = 1; 
+      return;
+    }
+  else {
+    pvlen = 0;  // no need to forward pathvec if not pushed
+  }
+#endif
+
     eta = eta_from_current_time_immediate(c->my_offset, interval);
 #if DEBUG
     PRINTF("ADJUSTMENT CAUSED BY %d\n", buf.id);
@@ -165,6 +239,7 @@ solotimer_open(struct solotimer_conn *c, uint16_t channel,
   c->interval = interval;
   c->id = id;
   c->started = 0;
+  c->need_reset = 0;
 }
 /*---------------------------------------------------------------------------*/
 void 
