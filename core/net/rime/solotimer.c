@@ -75,7 +75,8 @@ adjust(uint16_t my_offset, int interval, uint16_t your_nsize)
 
   your_offset = clock_time() % interval;
   your_distance = (my_offset + interval - your_offset) % interval;
-
+  
+  your_nsize = (your_nsize == 0)? 1 : your_nsize;
   target_distance = interval / (your_nsize + 1);
   if (your_distance >= target_distance) {
     return -1;
@@ -114,10 +115,17 @@ eta_from_current_time_immediate(uint16_t offset, int interval)
   return eta;
 }
 /*---------------------------------------------------------------------------*/
+static int
+eta_from_current_time_after_interval(uint16_t offset, int interval)
+{
+  int eta = (offset + interval - (clock_time() % interval)) % interval;
+  return eta + interval;
+}
+/*---------------------------------------------------------------------------*/
 static void
 timer_callback(void *ptr)
 {
-  int interval, nsize, claim;
+  int interval, nsize, claim, eta;
   struct solotimer_conn *c = ptr;
   interval = (int) c->interval;
 
@@ -133,15 +141,18 @@ timer_callback(void *ptr)
   }
   c->is_myslot = 1;
 
+  eta = eta_from_current_time(c->my_offset, c->interval);
+
 #if PATHVECTOR
   if (c->need_reset == 1) {
+    printf("RESET OFFSET\n");
     c->my_offset = random_rand() % interval;
     c->need_reset = 0;
+    eta = eta_from_current_time_after_interval(c->my_offset, c->interval);
   }
 #endif
 
-  ctimer_set(&c->timer,
-             eta_from_current_time(c->my_offset, c->interval),
+  ctimer_set(&c->timer, eta,
              timer_callback, c);
 }
 /*---------------------------------------------------------------------------*/
@@ -161,6 +172,7 @@ check_and_store_loop_from_pathvec(uint8_t my_id) {
   if (ind == -1) return 0;
   
   memcpy(loopvec, &pathvec[ind + 1], pvlen - (ind + 1));
+  lvlen = pvlen - (ind + 1);
   return 1;
 }
 #endif
@@ -172,7 +184,10 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
   struct msg buf;
   struct solotimer_conn *c = (struct solotimer_conn *) bc;
   int interval = c->interval;
+
+  int ind;
   
+  if (c->started == 0) return;
   memcpy(&buf, packetbuf_dataptr(), sizeof(buf));
   printf("Receive %d\n", buf.id);
 
@@ -188,10 +203,11 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
   }
 
 #if PATHVECTOR
-  if (array_index(buf.loopvec, buf.lvlen, c->id) == buf.lvlen - 1) {
-    lvlen = buf.lvlen;
-    memcpy(loopvec, buf.loopvec, lvlen);
+  if (array_index(buf.loopvec, buf.lvlen, c->id) == 0) {
+    lvlen = buf.lvlen - 1;
+    memcpy(loopvec, &buf.loopvec[1], lvlen);
     pvlen = 0;  // no need to forward pathvec if resetting
+    PRINTF("LOOP RECEIVED, RESET\n");
     c->need_reset = 1;
     return;
   } 
@@ -206,13 +222,11 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
     pvlen += 1;
     
     if (check_and_store_loop_from_pathvec(c->id) == 1) {
+      PRINTF("LOOP DETECTED, RESET\n");
       pvlen = 0;  // no need to forward pathvec if resetting
       c->need_reset = 1; 
       return;
     }
-  else {
-    pvlen = 0;  // no need to forward pathvec if not pushed
-  }
 #endif
 
     eta = eta_from_current_time_immediate(c->my_offset, interval);
@@ -223,6 +237,12 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
     c->my_offset = offset;
     ctimer_set(&c->timer, eta, timer_callback, c);
   }
+
+#if PATHVECTOR
+  else {
+    pvlen = 0;  // no need to forward pathvec if not pushed
+  }
+#endif
 }
 /*---------------------------------------------------------------------------*/
 static CC_CONST_FUNCTION struct broadcast_callbacks broadcast_callbacks = 
