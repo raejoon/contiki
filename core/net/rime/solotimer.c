@@ -115,12 +115,14 @@ eta_from_current_time_immediate(uint16_t offset, int interval)
   return eta;
 }
 /*---------------------------------------------------------------------------*/
+#if PATHVECTOR
 static int
 eta_from_current_time_after_interval(uint16_t offset, int interval)
 {
   int eta = (offset + interval - (clock_time() % interval)) % interval;
   return eta + interval;
 }
+#endif
 /*---------------------------------------------------------------------------*/
 static void
 timer_callback(void *ptr)
@@ -185,8 +187,6 @@ beacon_received(struct broadcast_conn *bc, const linkaddr_t *from)
   struct solotimer_conn *c = (struct solotimer_conn *) bc;
   int interval = c->interval;
 
-  int ind;
-  
   if (c->started == 0) return;
   memcpy(&buf, packetbuf_dataptr(), sizeof(buf));
   printf("Receive %d\n", buf.id);
