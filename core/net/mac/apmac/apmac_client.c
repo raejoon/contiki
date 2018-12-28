@@ -1,12 +1,16 @@
 #include "net/netstack.h"
 #include "packetbuf.h"
 #include "node-id.h"
+
 #include "net/mac/apmac/apmac_ap.h"
+#include "net/mac/apmac/apmac_client.h"
 #include <stdio.h>
+#include <string.h>
 
 #define BEACON_INTERVAL 10*CLOCK_SECOND
 
 static volatile uint8_t apmac_is_on = 0;
+static volatile uint16_t my_apid;
 static struct ctimer beacon_timer;
 
 #define DEBUG 1
@@ -15,34 +19,19 @@ static struct ctimer beacon_timer;
 #else
 #define PRINTF(...)
 #endif
+
 /*---------------------------------------------------------------------------*/
 static void
-beacon_timer_callback(void *ptr)
-{
-  struct beacon_msg *hdr;
-  
-  packetbuf_clear();
-  packetbuf_set_datalen(sizeof(struct beacon_msg));
-  hdr = packetbuf_dataptr();
-  hdr->node_id = node_id;
-  NETSTACK_FRAMER.create();
-  packetbuf_compact();
-  
-  NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
-  ctimer_reset(&beacon_timer);
-}
-/*---------------------------------------------------------------------------*/
-static void 
 send_packet(mac_callback_t sent_callback, void *ptr)
 {
 }
 /*---------------------------------------------------------------------------*/
-static void 
+static void
 send_list(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list)
 {
 }
 /*---------------------------------------------------------------------------*/
-static void 
+static void
 input_packet(void)
 {
   struct beacon_msg msgdata;
@@ -70,13 +59,25 @@ turn_off(int keep_radio_on)
   }
 }
 /*---------------------------------------------------------------------------*/
-void 
+void
 apmac_init(void)
 {
+  int ind;
+
   turn_on();
   NETSTACK_RADIO.on();
-  
-  ctimer_set(&beacon_timer, BEACON_INTERVAL, beacon_timer_callback, NULL);
+
+  for (ind = 0; ind < NUM_APS; ++ind) {
+    if (client_list[ind] == node_id) {
+      my_apid = ap_list[ind];
+      break;
+    }
+  }
+
+  if (ind == NUM_APS) 
+    printf("Warning: AP not found!");
+  else
+    printf("My AP is %u\n", my_apid);
 }
 /*---------------------------------------------------------------------------*/
 static unsigned short
@@ -85,14 +86,14 @@ channel_check_interval(void)
   return 0;
 }
 /*---------------------------------------------------------------------------*/
-const struct rdc_driver apmac_ap_driver = 
+const struct rdc_driver apmac_client_driver = 
 {
-  "AP-MAC (AP)",
+  "AP-MAC (Client)",
   apmac_init,
   send_packet,
   send_list,
   input_packet,
   turn_on,
   turn_off,
-  channel_check_interval,
+  channel_check_interval
 };
