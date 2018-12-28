@@ -9,7 +9,7 @@
 const uint16_t ap_list[NUM_APS] = {1, 3};
 const uint16_t client_list[NUM_APS] = {2, 4};
 
-enum pkt_type {beacon, ready};
+enum pkt_type {beacon, ready, data};
 
 struct msg {
   enum pkt_type type;

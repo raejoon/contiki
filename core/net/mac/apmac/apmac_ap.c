@@ -4,9 +4,15 @@
 #include "net/mac/apmac/apmac_ap.h"
 #include <stdio.h>
 
+#define DATA_INTERVAL (CLOCK_SECOND / 10)
+#define SHARE_INTERVAL (BEACON_INTERVAL / 2)
+
 static volatile uint8_t apmac_is_on = 0;
 static volatile uint16_t my_clientid;
+static volatile uint8_t is_dataperiod = 0;
 static struct ctimer beacon_timer;
+static struct ctimer data_timer;
+static struct ctimer share_timer;
 
 #define DEBUG 1
 #if DEBUG
@@ -16,9 +22,17 @@ static struct ctimer beacon_timer;
 #endif
 /*---------------------------------------------------------------------------*/
 static void
+share_timer_callback(void *ptr)
+{
+  is_dataperiod = 0;
+}
+/*---------------------------------------------------------------------------*/
+static void
 beacon_timer_callback(void *ptr)
 {
   struct msg *hdr;
+
+  is_dataperiod = 0;
   
   packetbuf_clear();
   packetbuf_set_datalen(sizeof(struct msg));
@@ -29,7 +43,9 @@ beacon_timer_callback(void *ptr)
   packetbuf_compact();
   
   NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
+  PRINTF("Sending beacon\n");
   ctimer_reset(&beacon_timer);
+  ctimer_set(&share_timer, SHARE_INTERVAL, share_timer_callback, NULL);
 }
 /*---------------------------------------------------------------------------*/
 static void 
@@ -42,6 +58,24 @@ send_list(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list)
 {
 }
 /*---------------------------------------------------------------------------*/
+static void
+data_timer_callback(void *ptr)
+{
+  if (is_dataperiod == 0) return;
+
+  struct msg *hdr;
+  packetbuf_clear();
+  packetbuf_set_datalen(sizeof(struct msg));
+  hdr = packetbuf_dataptr();
+  hdr->type = data;
+  hdr->node_id = node_id;
+  NETSTACK_FRAMER.create();
+  packetbuf_compact();
+  
+  NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
+  ctimer_set(&data_timer, DATA_INTERVAL, data_timer_callback, NULL);
+}
+/*---------------------------------------------------------------------------*/
 static void 
 input_packet(void)
 {
@@ -49,8 +83,11 @@ input_packet(void)
   NETSTACK_FRAMER.parse();
   memcpy(&msgdata, packetbuf_dataptr(), sizeof(struct msg));
 
-  if (msgdata.type == ready)
-    PRINTF("Received packet (%d, %u)\n", packetbuf_datalen(), msgdata.node_id);
+  if (msgdata.node_id == my_clientid && msgdata.type == ready) {
+    PRINTF("Received ready (%d, %u)\n", packetbuf_datalen(), msgdata.node_id);
+    is_dataperiod = 1;
+    data_timer_callback(NULL);
+  }
 }
 /*---------------------------------------------------------------------------*/
 static int
