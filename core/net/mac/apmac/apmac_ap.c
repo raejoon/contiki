@@ -4,8 +4,6 @@
 #include "net/mac/apmac/apmac_ap.h"
 #include <stdio.h>
 
-#define BEACON_INTERVAL 10*CLOCK_SECOND
-
 static volatile uint8_t apmac_is_on = 0;
 static struct ctimer beacon_timer;
 

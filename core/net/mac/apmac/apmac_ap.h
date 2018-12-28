@@ -4,6 +4,7 @@
 #include "net/mac/rdc.h"
 
 #define NUM_APS 2
+#define BEACON_INTERVAL 10*CLOCK_SECOND
 
 const uint16_t ap_list[NUM_APS] = {1, 3};
 const uint16_t client_list[NUM_APS] = {2, 4};

@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define BEACON_INTERVAL 10*CLOCK_SECOND
+#define EARLY_WINDOW (BEACON_INTERVAL / 10)
 
 static volatile uint8_t apmac_is_on = 0;
 static volatile uint16_t my_apid;
@@ -19,7 +19,13 @@ static struct ctimer beacon_timer;
 #else
 #define PRINTF(...)
 #endif
-
+/*---------------------------------------------------------------------------*/
+static void
+beacon_timer_callback(void *ptr)
+{
+  PRINTF("Waking up to receive beacon.\n");
+  NETSTACK_RADIO.on();
+}
 /*---------------------------------------------------------------------------*/
 static void
 send_packet(mac_callback_t sent_callback, void *ptr)
@@ -39,6 +45,11 @@ input_packet(void)
   memcpy(&msgdata, packetbuf_dataptr(), sizeof(struct beacon_msg));
 
   PRINTF("Received packet (%d, %u)\n", packetbuf_datalen(), msgdata.node_id);
+
+  NETSTACK_RADIO.off();
+  ctimer_set(&beacon_timer, BEACON_INTERVAL - EARLY_WINDOW, 
+             beacon_timer_callback, NULL);
+  PRINTF("Going to sleep.\n");
 }
 /*---------------------------------------------------------------------------*/
 static int
