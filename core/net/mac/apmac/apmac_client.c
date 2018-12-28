@@ -40,16 +40,30 @@ send_list(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list)
 static void
 input_packet(void)
 {
-  struct beacon_msg msgdata;
+  struct msg msgdata;
+  struct msg *outmsg;
+
   NETSTACK_FRAMER.parse();
-  memcpy(&msgdata, packetbuf_dataptr(), sizeof(struct beacon_msg));
+  memcpy(&msgdata, packetbuf_dataptr(), sizeof(struct msg));
+  
+  if (msgdata.type == beacon && msgdata.node_id == my_apid) {
+    PRINTF("Received packet (%d, %u)\n", packetbuf_datalen(), msgdata.node_id);
 
-  PRINTF("Received packet (%d, %u)\n", packetbuf_datalen(), msgdata.node_id);
+    packetbuf_clear();
+    packetbuf_set_datalen(sizeof(struct msg));
+    outmsg = packetbuf_dataptr();
+    outmsg->type = ready;
+    outmsg->node_id = node_id;
+    NETSTACK_FRAMER.create();
+    packetbuf_compact();
 
-  NETSTACK_RADIO.off();
-  ctimer_set(&beacon_timer, BEACON_INTERVAL - EARLY_WINDOW, 
-             beacon_timer_callback, NULL);
-  PRINTF("Going to sleep.\n");
+    NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
+
+    NETSTACK_RADIO.off();
+    ctimer_set(&beacon_timer, BEACON_INTERVAL - EARLY_WINDOW, 
+               beacon_timer_callback, NULL);
+    PRINTF("Going to sleep.\n");
+  }
 }
 /*---------------------------------------------------------------------------*/
 static int
@@ -86,7 +100,7 @@ apmac_init(void)
   }
 
   if (ind == NUM_APS) 
-    printf("Warning: AP not found!");
+    printf("Warning: AP not found!\n");
   else
     printf("My AP is %u\n", my_apid);
 }
