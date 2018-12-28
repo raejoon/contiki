@@ -8,10 +8,12 @@
 #include <string.h>
 
 #define EARLY_WINDOW (BEACON_INTERVAL / 10)
+#define READY_WINDOW (BEACON_INTERVAL / 10)
 
 static volatile uint8_t apmac_is_on = 0;
 static volatile uint16_t my_apid;
 static struct ctimer beacon_timer;
+static struct ctimer awake_timer;
 
 #define DEBUG 1
 #if DEBUG
@@ -38,6 +40,13 @@ send_list(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list)
 }
 /*---------------------------------------------------------------------------*/
 static void
+awake_timer_callback(void *ptr)
+{
+  NETSTACK_RADIO.off();
+  PRINTF("Going to sleep.\n");
+}
+/*---------------------------------------------------------------------------*/
+static void
 input_packet(void)
 {
   struct msg msgdata;
@@ -48,6 +57,8 @@ input_packet(void)
   
   if (msgdata.type == beacon && msgdata.node_id == my_apid) {
     PRINTF("Received packet (%d, %u)\n", packetbuf_datalen(), msgdata.node_id);
+    ctimer_set(&beacon_timer, BEACON_INTERVAL - EARLY_WINDOW, 
+               beacon_timer_callback, NULL);
 
     packetbuf_clear();
     packetbuf_set_datalen(sizeof(struct msg));
@@ -58,12 +69,10 @@ input_packet(void)
     packetbuf_compact();
 
     NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
-
-    NETSTACK_RADIO.off();
-    ctimer_set(&beacon_timer, BEACON_INTERVAL - EARLY_WINDOW, 
-               beacon_timer_callback, NULL);
-    PRINTF("Going to sleep.\n");
+    
+    ctimer_set(&awake_timer, READY_WINDOW, awake_timer_callback, NULL);
   }
+
 }
 /*---------------------------------------------------------------------------*/
 static int
