@@ -1,11 +1,16 @@
 #include "net/netstack.h"
+#include "lib/random.h"
 #include "packetbuf.h"
 #include "node-id.h"
 #include "net/mac/apmac/apmac_ap.h"
+#include "net/mac/apmac/apmac_csma.h"
 #include <stdio.h>
 
-#define DATA_INTERVAL (CLOCK_SECOND / 10)
-#define SHARE_INTERVAL (BEACON_INTERVAL / 2)
+#define DATA_INTERVAL 1
+#define SHARE_INTERVAL (BEACON_INTERVAL / 4)
+#define CCA_INTERVAL 1
+
+#define PREMPTION 0
 
 static volatile uint8_t apmac_is_on = 0;
 static volatile uint16_t my_clientid;
@@ -14,7 +19,7 @@ static struct ctimer beacon_timer;
 static struct ctimer data_timer;
 static struct ctimer share_timer;
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
@@ -24,28 +29,9 @@ static struct ctimer share_timer;
 static void
 share_timer_callback(void *ptr)
 {
+#if PREEMPTION
   is_dataperiod = 0;
-}
-/*---------------------------------------------------------------------------*/
-static void
-beacon_timer_callback(void *ptr)
-{
-  struct msg *hdr;
-
-  is_dataperiod = 0;
-  
-  packetbuf_clear();
-  packetbuf_set_datalen(sizeof(struct msg));
-  hdr = packetbuf_dataptr();
-  hdr->type = beacon;
-  hdr->node_id = node_id;
-  NETSTACK_FRAMER.create();
-  packetbuf_compact();
-  
-  NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
-  PRINTF("Sending beacon\n");
-  ctimer_reset(&beacon_timer);
-  ctimer_set(&share_timer, SHARE_INTERVAL, share_timer_callback, NULL);
+#endif
 }
 /*---------------------------------------------------------------------------*/
 static void 
@@ -59,20 +45,35 @@ send_list(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list)
 }
 /*---------------------------------------------------------------------------*/
 static void
-data_timer_callback(void *ptr)
-{
-  if (is_dataperiod == 0) return;
-
-  struct msg *hdr;
-  packetbuf_clear();
-  packetbuf_set_datalen(sizeof(struct msg));
-  hdr = packetbuf_dataptr();
-  hdr->type = data;
-  hdr->node_id = node_id;
-  NETSTACK_FRAMER.create();
-  packetbuf_compact();
+beacon_timer_callback(void *ptr) {
   
-  NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
+  is_dataperiod = 0;
+  ctimer_reset(&beacon_timer);
+  ctimer_set(&share_timer, SHARE_INTERVAL, share_timer_callback, NULL);
+  
+  apmac_csma_wait();
+  apmac_csma_prepare(beacon);
+  apmac_csma_send();
+  PRINTF("Beacon sent\n");
+}
+/*---------------------------------------------------------------------------*/
+static void
+data_timer_callback(void *ptr) {
+  int num_pkts;
+  
+  if (is_dataperiod == 0) return;
+  
+  apmac_csma_wait();
+  apmac_csma_prepare(data);
+
+  for (num_pkts = 0; num_pkts < 40; num_pkts++) {
+#if PREEMPTION
+    if (ctimer_expired(&share_timer)) break;
+#endif
+    apmac_csma_send();
+  }
+
+  PRINTF("Data sent\n");
   ctimer_set(&data_timer, DATA_INTERVAL, data_timer_callback, NULL);
 }
 /*---------------------------------------------------------------------------*/

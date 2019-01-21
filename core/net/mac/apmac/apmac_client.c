@@ -4,6 +4,7 @@
 
 #include "net/mac/apmac/apmac_ap.h"
 #include "net/mac/apmac/apmac_client.h"
+#include "net/mac/apmac/apmac_csma.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -42,6 +43,8 @@ send_list(mac_callback_t sent_callback, void *ptr, struct rdc_buf_list *list)
 static void
 awake_timer_callback(void *ptr)
 {
+  if (ctimer_expired(&beacon_timer)) return;
+
   NETSTACK_RADIO.off();
   PRINTF("Going to sleep.\n");
 }
@@ -54,22 +57,22 @@ input_packet(void)
 
   NETSTACK_FRAMER.parse();
   memcpy(&msgdata, packetbuf_dataptr(), sizeof(struct msg));
+
+  if (msgdata.node_id != my_apid) return;
   
-  if (msgdata.type == beacon && msgdata.node_id == my_apid) {
-    PRINTF("Received packet (%d, %u)\n", packetbuf_datalen(), msgdata.node_id);
+  if (msgdata.type == beacon) {
+    PRINTF("Received beacon (%u)\n", msgdata.node_id);
     ctimer_set(&beacon_timer, BEACON_INTERVAL - EARLY_WINDOW, 
                beacon_timer_callback, NULL);
-
-    packetbuf_clear();
-    packetbuf_set_datalen(sizeof(struct msg));
-    outmsg = packetbuf_dataptr();
-    outmsg->type = ready;
-    outmsg->node_id = node_id;
-    NETSTACK_FRAMER.create();
-    packetbuf_compact();
-
-    NETSTACK_RADIO.send(packetbuf_hdrptr(), packetbuf_totlen());
     
+    apmac_csma_wait();
+    apmac_csma_prepare(ready);
+    apmac_csma_send();
+    PRINTF("Ready frame sent\n");
+
+    ctimer_set(&awake_timer, READY_WINDOW, awake_timer_callback, NULL);
+  } else if (msgdata.type == data) {
+    PRINTF("Received data (%u).\n", msgdata.node_id);
     ctimer_set(&awake_timer, READY_WINDOW, awake_timer_callback, NULL);
   }
 
