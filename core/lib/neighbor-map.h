@@ -18,5 +18,6 @@ void neighbor_map_init(void);
 int neighbor_map_update(uint8_t id, uint32_t timestamp);
 void neighbor_map_flush(uint32_t timestamp);
 void neighbor_map_dump(void);
+int neighbor_map_size(void);
 
 #endif

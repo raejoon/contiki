@@ -79,6 +79,24 @@
       </interface_config>
       <motetype_identifier>sky1</motetype_identifier>
     </mote>
+    <mote>
+      <breakpoints />
+      <interface_config>
+        org.contikios.cooja.interfaces.Position
+        <x>64.41047893419753</x>
+        <y>82.4138036649066</y>
+        <z>0.0</z>
+      </interface_config>
+      <interface_config>
+        org.contikios.cooja.mspmote.interfaces.MspClock
+        <deviation>1.0</deviation>
+      </interface_config>
+      <interface_config>
+        org.contikios.cooja.mspmote.interfaces.MspMoteID
+        <id>3</id>
+      </interface_config>
+      <motetype_identifier>sky1</motetype_identifier>
+    </mote>
   </simulation>
   <plugin>
     org.contikios.cooja.plugins.SimControl
@@ -96,7 +114,7 @@
       <skin>org.contikios.cooja.plugins.skins.GridVisualizerSkin</skin>
       <skin>org.contikios.cooja.plugins.skins.TrafficVisualizerSkin</skin>
       <skin>org.contikios.cooja.plugins.skins.UDGMVisualizerSkin</skin>
-      <viewport>3.954705198086705 0.0 0.0 3.954705198086705 -103.02930399529659 -47.85216336034317</viewport>
+      <viewport>8.265541360135815 0.0 0.0 8.265541360135815 -422.75111402040255 -460.2666275911153</viewport>
     </plugin_config>
     <width>400</width>
     <z>1</z>
@@ -112,8 +130,8 @@
       <coloring />
     </plugin_config>
     <width>1087</width>
-    <z>4</z>
-    <height>240</height>
+    <z>2</z>
+    <height>851</height>
     <location_x>400</location_x>
     <location_y>160</location_y>
   </plugin>
@@ -122,13 +140,14 @@
     <plugin_config>
       <mote>0</mote>
       <mote>1</mote>
+      <mote>2</mote>
       <showRadioRXTX />
       <showRadioHW />
       <showLEDs />
       <zoomfactor>2000.0</zoomfactor>
     </plugin_config>
     <width>1487</width>
-    <z>3</z>
+    <z>4</z>
     <height>166</height>
     <location_x>0</location_x>
     <location_y>1194</location_y>
@@ -140,7 +159,7 @@
       <decorations>true</decorations>
     </plugin_config>
     <width>807</width>
-    <z>2</z>
+    <z>3</z>
     <height>160</height>
     <location_x>680</location_x>
     <location_y>0</location_y>

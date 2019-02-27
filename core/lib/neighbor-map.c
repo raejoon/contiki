@@ -1,9 +1,10 @@
 #include "lib/neighbor-map.h"
+#include "lib/solo-conf.h"
 #include "stdio.h"
 
 #define BETA 20
-#define INTERVAL_THRESHOLD 120
-#define TIMESTAMP_THRESHOLD 400
+#define INTERVAL_THRESHOLD 2*INTERVAL
+#define TIMESTAMP_THRESHOLD 4*INTERVAL
 
 MEMB(neighbor_memb, struct neighbor, MAX_NEIGHBORS);
 LIST(neighbor_list);
@@ -37,7 +38,7 @@ neighbor_map_update(uint8_t id, uint32_t timestamp)
     n = memb_alloc(&neighbor_memb);
     if (n == NULL) return -1;
     n->id = id;
-    n->average_interval = 100;
+    n->average_interval = INTERVAL;
     list_add(neighbor_list, n);
   } else {
     last_interval = timestamp - n->last_timestamp;
@@ -65,7 +66,8 @@ neighbor_map_flush(uint32_t current_time)
   }
 }
 
-void neighbor_map_dump(void)
+void 
+neighbor_map_dump(void)
 {
   struct neighbor* curr;
   curr = (struct neighbor *) list_head(neighbor_list);
@@ -78,4 +80,10 @@ void neighbor_map_dump(void)
     curr = (struct neighbor*) list_item_next(curr);
   }
   printf("----------------------\n");
+}
+
+int 
+neighbor_map_size(void)
+{
+  return list_length(neighbor_list);
 }
