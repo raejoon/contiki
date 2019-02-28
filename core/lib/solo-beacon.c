@@ -26,6 +26,9 @@ static void
 ctimer_callback(void* ptr)
 {
   struct solo_beacon* sb = (struct solo_beacon*) ptr;
+
+  sb->beacon_offset = clock_time() % INTERVAL;
+
   send_buf.id = sb->id;
   send_buf.degree = neighbor_map_size();
   packetbuf_copyfrom(&send_buf, sizeof(send_buf));
@@ -47,6 +50,7 @@ solo_beacon_init(struct solo_beacon *sb)
 void
 solo_beacon_start(struct solo_beacon *sb)
 {
+  sb->beacon_offset = clock_time() % INTERVAL;
   ctimer_set(&(sb->ct), INTERVAL, ctimer_callback, sb);
 }
 
