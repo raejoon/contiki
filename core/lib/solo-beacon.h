@@ -6,5 +6,4 @@ void solo_beacon_start(void);
 void solo_beacon_delay(void);
 void solo_beacon_destroy(void);
 
-
 #endif
