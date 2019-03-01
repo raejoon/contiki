@@ -34,9 +34,9 @@ PROCESS_THREAD(example_solo_scheduler_process, ev, data)
   task1 = solo_scheduler_add(&ss, 10*INTERVAL, 0, ss_callback, &id1);
   task2 = solo_scheduler_add(&ss, 10*INTERVAL, INTERVAL, ss_callback, &id2);
   task3 = solo_scheduler_add(&ss, 20*INTERVAL, 0, ss_callback, &id3);
-  solo_scheduler_start(task1);
-  solo_scheduler_start(task2);
-  solo_scheduler_start(task3);
+  solo_task_start(task1);
+  solo_task_start(task2);
+  solo_task_start(task3);
 
   while (1) {
     etimer_set(&et, CLOCK_SECOND);
