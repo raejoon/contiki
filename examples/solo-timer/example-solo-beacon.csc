@@ -24,9 +24,9 @@
       org.contikios.cooja.mspmote.SkyMoteType
       <identifier>sky1</identifier>
       <description>Sky Mote Type #sky1</description>
-      <source EXPORT="discard">[CONTIKI_DIR]/examples/solo-timer/example-solo-beacon.c</source>
-      <commands EXPORT="discard">make example-solo-beacon.sky TARGET=sky</commands>
-      <firmware EXPORT="copy">[CONTIKI_DIR]/examples/solo-timer/example-solo-beacon.sky</firmware>
+      <source EXPORT="discard">[CONTIKI_DIR]/examples/solo-timer/example-solo-timer.c</source>
+      <commands EXPORT="discard">make example-solo-timer.sky TARGET=sky</commands>
+      <firmware EXPORT="copy">[CONTIKI_DIR]/examples/solo-timer/example-solo-timer.sky</firmware>
       <moteinterface>org.contikios.cooja.interfaces.Position</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.RimeAddress</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.IPAddress</moteinterface>
@@ -47,8 +47,8 @@
       <breakpoints />
       <interface_config>
         org.contikios.cooja.interfaces.Position
-        <x>82.88806752432505</x>
-        <y>84.4879387709407</y>
+        <x>88.2504055384973</x>
+        <y>35.076801028763214</y>
         <z>0.0</z>
       </interface_config>
       <interface_config>
@@ -65,8 +65,8 @@
       <breakpoints />
       <interface_config>
         org.contikios.cooja.interfaces.Position
-        <x>66.56899144344543</x>
-        <y>66.3967155414397</y>
+        <x>75.94724069412395</x>
+        <y>35.468978686362796</y>
         <z>0.0</z>
       </interface_config>
       <interface_config>
@@ -76,24 +76,6 @@
       <interface_config>
         org.contikios.cooja.mspmote.interfaces.MspMoteID
         <id>2</id>
-      </interface_config>
-      <motetype_identifier>sky1</motetype_identifier>
-    </mote>
-    <mote>
-      <breakpoints />
-      <interface_config>
-        org.contikios.cooja.interfaces.Position
-        <x>64.41047893419753</x>
-        <y>82.4138036649066</y>
-        <z>0.0</z>
-      </interface_config>
-      <interface_config>
-        org.contikios.cooja.mspmote.interfaces.MspClock
-        <deviation>1.0</deviation>
-      </interface_config>
-      <interface_config>
-        org.contikios.cooja.mspmote.interfaces.MspMoteID
-        <id>3</id>
       </interface_config>
       <motetype_identifier>sky1</motetype_identifier>
     </mote>
@@ -114,10 +96,10 @@
       <skin>org.contikios.cooja.plugins.skins.GridVisualizerSkin</skin>
       <skin>org.contikios.cooja.plugins.skins.TrafficVisualizerSkin</skin>
       <skin>org.contikios.cooja.plugins.skins.UDGMVisualizerSkin</skin>
-      <viewport>8.265541360135815 0.0 0.0 8.265541360135815 -422.75111402040255 -460.2666275911153</viewport>
+      <viewport>6.797694692071231 0.0 0.0 6.797694692071231 -313.3534495722851 -63.64913254079938</viewport>
     </plugin_config>
     <width>400</width>
-    <z>1</z>
+    <z>2</z>
     <height>400</height>
     <location_x>1</location_x>
     <location_y>1</location_y>
@@ -130,8 +112,8 @@
       <coloring />
     </plugin_config>
     <width>1087</width>
-    <z>2</z>
-    <height>851</height>
+    <z>1</z>
+    <height>848</height>
     <location_x>400</location_x>
     <location_y>160</location_y>
   </plugin>
@@ -140,11 +122,10 @@
     <plugin_config>
       <mote>0</mote>
       <mote>1</mote>
-      <mote>2</mote>
       <showRadioRXTX />
       <showRadioHW />
       <showLEDs />
-      <zoomfactor>2000.0</zoomfactor>
+      <zoomfactor>500.0</zoomfactor>
     </plugin_config>
     <width>1487</width>
     <z>4</z>

@@ -42,6 +42,7 @@
 #include "lib/random.h"
 #include "net/netstack.h"
 #include "net/mac/frame802154.h"
+#include "lib/solo-timer.h"
 
 #if NETSTACK_CONF_WITH_IPV6
 #include "net/ipv6/uip-ds6.h"
@@ -223,6 +224,11 @@ main(int argc, char **argv)
   /*
    * Hardware initialization done!
    */
+
+  /*
+   * raejoon: Initialize Solo timers
+   */
+  solo_timer_init();
 
   /* Initialize energest first (but after rtimer)
    */
