@@ -10,6 +10,7 @@ AUTOSTART_PROCESSES(&example_solo_scheduler_process);
 static int id1 = 1;
 static int id2 = 2;
 static int id3 = 3;
+
 static void ss_callback(void *ptr)
 {
   int* id = (int*)ptr;
@@ -17,10 +18,9 @@ static void ss_callback(void *ptr)
 }
 
 static struct solo_timer st;  // dummy solo timer
-static struct solo_scheduler ss1;
-static struct solo_scheduler ss2;
-static struct solo_scheduler ss3;
+static struct solo_scheduler ss;
 
+static struct solo_task *task1, *task2, *task3;
 
 PROCESS_THREAD(example_solo_scheduler_process, ev, data)
 {
@@ -30,15 +30,13 @@ PROCESS_THREAD(example_solo_scheduler_process, ev, data)
   PROCESS_BEGIN();
   
   st.beacon.beacon_offset = 0;
-  ss1.st = &st;
-  ss2.st = &st;
-  ss3.st = &st;
-  solo_scheduler_init(&ss1, 10*INTERVAL, 0, ss_callback, &id1);
-  solo_scheduler_init(&ss2, 10*INTERVAL, INTERVAL, ss_callback, &id2);
-  solo_scheduler_init(&ss3, 20*INTERVAL, 0, ss_callback, &id3);
-  solo_scheduler_start(&ss1);
-  solo_scheduler_start(&ss2);
-  solo_scheduler_start(&ss3);
+  solo_scheduler_init(&ss, &st);
+  task1 = solo_scheduler_add(&ss, 10*INTERVAL, 0, ss_callback, &id1);
+  task2 = solo_scheduler_add(&ss, 10*INTERVAL, INTERVAL, ss_callback, &id2);
+  task3 = solo_scheduler_add(&ss, 20*INTERVAL, 0, ss_callback, &id3);
+  solo_scheduler_start(task1);
+  solo_scheduler_start(task2);
+  solo_scheduler_start(task3);
 
   while (1) {
     etimer_set(&et, CLOCK_SECOND);
