@@ -4,6 +4,8 @@
 #include "lib/neighbor-map.h"
 #include "lib/solo-conf.h"
 
+#define DEBUG 0
+
 struct solo_beacon_data {
   uint8_t id;
   uint8_t degree;
@@ -15,11 +17,13 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from);
 static void 
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
-  printf("Broadcast received.\n");
   memcpy(&recv_buf, packetbuf_dataptr(), sizeof(recv_buf));
   neighbor_map_update(recv_buf.id, clock_time());
   neighbor_map_flush(clock_time());
+#if DEBUG
+  printf("Broadcast received.\n");
   neighbor_map_dump();
+#endif
 }
 
 static void

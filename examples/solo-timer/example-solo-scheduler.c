@@ -25,7 +25,7 @@ static struct solo_task *task1, *task2, *task3;
 PROCESS_THREAD(example_solo_scheduler_process, ev, data)
 {
   static struct etimer et;
-  PROCESS_EXITHANDLER(solo_timer_destroy(&st);)
+  PROCESS_EXITHANDLER(solo_scheduler_destroy(&ss);)
 
   PROCESS_BEGIN();
   
