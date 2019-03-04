@@ -1,4 +1,5 @@
 #include "lib/solo-timer.h"
+#include "stdio.h"
 
 static struct solo_timer st;
 

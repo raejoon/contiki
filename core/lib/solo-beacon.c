@@ -66,6 +66,7 @@ solo_beacon_start(struct solo_beacon *sb)
 {
   sb->beacon_offset = clock_time() % INTERVAL;
   sb->beacon_expiry = clock_time() + INTERVAL;
+  printf("after: %u\n", sb->beacon_expiry - clock_time());
   ctimer_set(&(sb->ct), sb->beacon_expiry - clock_time(), ctimer_callback, sb);
 }
 

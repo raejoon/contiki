@@ -24,9 +24,9 @@
       org.contikios.cooja.mspmote.SkyMoteType
       <identifier>sky1</identifier>
       <description>Sky Mote Type #sky1</description>
-      <source EXPORT="discard">[CONTIKI_DIR]/examples/solo-timer/example-solo-beacon.c</source>
-      <commands EXPORT="discard">make example-solo-beacon.sky TARGET=sky</commands>
-      <firmware EXPORT="copy">[CONTIKI_DIR]/examples/solo-timer/example-solo-beacon.sky</firmware>
+      <source EXPORT="discard">[CONTIKI_DIR]/examples/solo-timer/example-solo-timer.c</source>
+      <commands EXPORT="discard">make example-solo-timer.sky TARGET=sky</commands>
+      <firmware EXPORT="copy">[CONTIKI_DIR]/examples/solo-timer/example-solo-timer.sky</firmware>
       <moteinterface>org.contikios.cooja.interfaces.Position</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.RimeAddress</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.IPAddress</moteinterface>
@@ -47,8 +47,8 @@
       <breakpoints />
       <interface_config>
         org.contikios.cooja.interfaces.Position
-        <x>52.72952611977074</x>
-        <y>41.28072246698344</y>
+        <x>-55.79043217098385</x>
+        <y>-8.792569917191383</y>
         <z>0.0</z>
       </interface_config>
       <interface_config>
@@ -65,8 +65,8 @@
       <breakpoints />
       <interface_config>
         org.contikios.cooja.interfaces.Position
-        <x>89.21524079731908</x>
-        <y>19.879816118162907</y>
+        <x>-37.88244469239556</x>
+        <y>14.612632103816923</y>
         <z>0.0</z>
       </interface_config>
       <interface_config>
@@ -96,10 +96,10 @@
       <skin>org.contikios.cooja.plugins.skins.GridVisualizerSkin</skin>
       <skin>org.contikios.cooja.plugins.skins.TrafficVisualizerSkin</skin>
       <skin>org.contikios.cooja.plugins.skins.UDGMVisualizerSkin</skin>
-      <viewport>5.391898568135482 0.0 0.0 5.391898568135482 -110.67589274729067 -34.885710211822754</viewport>
+      <viewport>2.0906533458412575 0.0 0.0 2.0906533458412575 268.60394189968525 152.21937449900437</viewport>
     </plugin_config>
     <width>400</width>
-    <z>2</z>
+    <z>1</z>
     <height>400</height>
     <location_x>1</location_x>
     <location_y>1</location_y>
@@ -112,8 +112,8 @@
       <coloring />
     </plugin_config>
     <width>1087</width>
-    <z>1</z>
-    <height>777</height>
+    <z>2</z>
+    <height>943</height>
     <location_x>400</location_x>
     <location_y>160</location_y>
   </plugin>
@@ -125,7 +125,7 @@
       <showRadioRXTX />
       <showRadioHW />
       <showLEDs />
-      <zoomfactor>500.0</zoomfactor>
+      <zoomfactor>100000.0</zoomfactor>
     </plugin_config>
     <width>1487</width>
     <z>4</z>
