@@ -9,7 +9,7 @@ struct solo_timer;
 
 struct solo_scheduler {
   struct solo_timer *st;  
-  struct solo_task *tasks;
+  LIST_STRUCT(task_list);
 };
 
 void solo_scheduler_init(struct solo_scheduler* ss, struct solo_timer *st);

@@ -7,7 +7,7 @@
 struct solo_scheduler;
 
 struct solo_task {
-  LIST_STRUCT(task_list);
+  struct solo_task* next;
   struct solo_scheduler *scheduler;
   struct ctimer ct;
   clock_time_t interval;
