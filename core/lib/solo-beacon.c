@@ -4,7 +4,7 @@
 #include "lib/solo-conf.h"
 #include "lib/solo-pco.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 struct solo_beacon_data {
   uint8_t id;

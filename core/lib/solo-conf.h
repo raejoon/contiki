@@ -3,6 +3,6 @@
 
 #include "contiki.h"
 
-#define INTERVAL CLOCK_SECOND
+#define INTERVAL 60 * CLOCK_SECOND
 
 #endif

@@ -225,11 +225,6 @@ main(int argc, char **argv)
    * Hardware initialization done!
    */
 
-  /*
-   * raejoon: Initialize Solo timers
-   */
-  solo_timer_init();
-
   /* Initialize energest first (but after rtimer)
    */
   energest_init();
@@ -401,6 +396,12 @@ main(int argc, char **argv)
 	   uip_ipaddr_to_quad(&hostaddr));
   }
 #endif /* NETSTACK_CONF_WITH_IPV4 */
+
+  /*
+   * raejoon: Initialize Solo timers
+   */
+  solo_timer_init();
+
   
   watchdog_start();
 

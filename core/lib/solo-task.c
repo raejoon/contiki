@@ -13,7 +13,7 @@ solo_task_expiry(struct solo_task* task)
   clock_time_t offset = 
     (task->scheduler->st->beacon).beacon_offset * task->interval / INTERVAL 
       + task->offset;
-  
+
   unsigned int round = clock_time() / task->interval + 1;
   clock_time_t expiry = round * task->interval + offset;
 
