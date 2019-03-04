@@ -13,14 +13,14 @@ struct solo_beacon {
 
   uint8_t id;
   clock_time_t beacon_offset;
-  struct solo_neighbor *neighbors;
+  clock_time_t beacon_expiry;
+  struct solo_neighbor_map neighbors;
   
   struct ctimer ct;
 };
 
 void solo_beacon_init(struct solo_beacon *sb);
 void solo_beacon_start(struct solo_beacon *sb);
-void solo_beacon_delay(void);
 void solo_beacon_destroy(struct solo_beacon *sb);
 
 #endif

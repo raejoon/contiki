@@ -11,13 +11,13 @@
 MEMB(neighbor_memb, struct solo_neighbor, MAX_NEIGHBORS);
 
 void 
-solo_neighbor_init(struct solo_neighbor* neighbors)
+solo_neighbor_init(struct solo_neighbor_map* neighbors)
 {
   LIST_STRUCT_INIT(neighbors, neighbor_list);
 }
 
 static struct solo_neighbor*
-solo_neighbor_find(struct solo_neighbor* neighbors, uint8_t id)
+solo_neighbor_find(struct solo_neighbor_map* neighbors, uint8_t id)
 {
   struct solo_neighbor* curr;
   curr = (struct solo_neighbor *) list_head(neighbors->neighbor_list);
@@ -29,7 +29,7 @@ solo_neighbor_find(struct solo_neighbor* neighbors, uint8_t id)
 }
 
 int 
-solo_neighbor_update(struct solo_neighbor* neighbors, 
+solo_neighbor_update(struct solo_neighbor_map* neighbors, 
                      uint8_t id, clock_time_t timestamp)
 {
   struct solo_neighbor* n;
@@ -53,7 +53,8 @@ solo_neighbor_update(struct solo_neighbor* neighbors,
 }
 
 void 
-solo_neighbor_flush(struct solo_neighbor* neighbors, clock_time_t current_time)
+solo_neighbor_flush(struct solo_neighbor_map* neighbors, 
+                    clock_time_t current_time)
 {
   struct solo_neighbor *curr, *next;
   curr = (struct solo_neighbor *) list_head(neighbors->neighbor_list);
@@ -71,7 +72,7 @@ solo_neighbor_flush(struct solo_neighbor* neighbors, clock_time_t current_time)
 }
 
 void 
-solo_neighbor_dump(struct solo_neighbor* neighbors)
+solo_neighbor_dump(struct solo_neighbor_map* neighbors)
 {
   struct solo_neighbor* curr;
   curr = (struct solo_neighbor *) list_head(neighbors->neighbor_list);
@@ -86,12 +87,12 @@ solo_neighbor_dump(struct solo_neighbor* neighbors)
   printf("----------------------\n");
 }
 
-int solo_neighbor_size(struct solo_neighbor* neighbors)
+int solo_neighbor_size(struct solo_neighbor_map* neighbors)
 {
   return list_length(neighbors->neighbor_list);
 }
 
-void solo_neighbor_destroy(struct solo_neighbor* neighbors)
+void solo_neighbor_destroy(struct solo_neighbor_map* neighbors)
 {
   struct solo_neighbor* head;
   while ((head = list_head(neighbors->neighbor_list)) != NULL)
