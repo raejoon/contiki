@@ -43,7 +43,14 @@ solo_neighbor_update(struct solo_neighbor_map* neighbors,
     n->average_interval = INTERVAL;
     list_add(neighbors->neighbor_list, n);
   } else {
-    last_interval = timestamp - n->last_timestamp;
+    if (timestamp < n->last_timestamp) {
+      last_interval = ((uint32_t) -1) - n->last_timestamp + timestamp + 1;
+    }
+    else {
+      last_interval = timestamp - n->last_timestamp;
+    }
+    
+    printf("last_interval: %u\n", last_interval);
     n->average_interval = 
       ((100 - BETA) * n->average_interval + BETA * last_interval) / 100;
   }

@@ -8,8 +8,8 @@
 struct solo_neighbor {
   struct solo_neighbor* next;
   uint8_t id;
-  uint32_t last_timestamp;
-  uint32_t average_interval;
+  clock_time_t last_timestamp;
+  clock_time_t average_interval;
 };
 
 struct solo_neighbor_map {

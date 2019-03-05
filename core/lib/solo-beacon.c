@@ -57,8 +57,6 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
     (sb->beacon_offset + INTERVAL - clock_time() % INTERVAL) % INTERVAL;
   sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
 
-  printf("time_left: %u, delay: %u\n", time_left, delay);
-
   ctimer_stop(&(sb->ct));
   ctimer_set(&(sb->ct), time_left + delay, ctimer_callback, sb);
 }
