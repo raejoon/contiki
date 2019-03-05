@@ -47,12 +47,14 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   solo_neighbor_update(&sb->neighbors, recv_buf.id, clock_time());
   solo_neighbor_flush(&sb->neighbors, clock_time());
 
+  clock_time_t delay = solo_pco_adjust(sb->beacon_offset, recv_buf.degree);
+
 #if DEBUG
   printf("Broadcast received.\n");
   solo_neighbor_dump(&sb->neighbors);
+  printf("PCO delay: %u\n", (unsigned int) delay);
 #endif
   
-  clock_time_t delay = solo_pco_adjust(sb->beacon_offset, recv_buf.degree);
   delay = (delay < 10)? 0 : delay;
 
   ctimer_stop(&(sb->ct));
