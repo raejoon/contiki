@@ -20,11 +20,11 @@ PROCESS_THREAD(example_solo_timer_process, ev, data)
 
   PROCESS_BEGIN();
   
-  task1 = solo_timer_add(10*INTERVAL, 0, ss_callback, &task1);
+  task1 = solo_timer_add(6*INTERVAL, 0, ss_callback, &task1);
   printf("Solo timer task added: %p\n", task1);
-  task2 = solo_timer_add(10*INTERVAL, INTERVAL, ss_callback, &task2);
+  task2 = solo_timer_add(INTERVAL/2, 0, ss_callback, &task2);
   printf("Solo timer task added: %p\n", task2);
-  task3 = solo_timer_add(20*INTERVAL, 0, ss_callback, &task3);
+  task3 = solo_timer_add(6*INTERVAL, 2*INTERVAL, ss_callback, &task3);
   printf("Solo timer task added: %p\n", task3);
   solo_task_start(task1);
   solo_task_start(task2);

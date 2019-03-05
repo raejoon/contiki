@@ -4,7 +4,7 @@
 #include "lib/solo-conf.h"
 #include "lib/solo-pco.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 struct solo_beacon_data {
   uint8_t id;
@@ -53,11 +53,13 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 #endif
   
   clock_time_t delay = solo_pco_adjust(sb->beacon_offset, recv_buf.degree);
+  delay = (delay < 10)? 0 : delay;
+
+  ctimer_stop(&(sb->ct));
+
   clock_time_t time_left = 
     (sb->beacon_offset + INTERVAL - clock_time() % INTERVAL) % INTERVAL;
   sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
-
-  ctimer_stop(&(sb->ct));
   ctimer_set(&(sb->ct), time_left + delay, ctimer_callback, sb);
 }
 

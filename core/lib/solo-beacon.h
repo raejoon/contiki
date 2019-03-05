@@ -13,7 +13,6 @@ struct solo_beacon {
 
   uint8_t id;
   clock_time_t beacon_offset;
-  clock_time_t beacon_expiry;
   struct solo_neighbor_map neighbors;
   
   struct ctimer ct;
