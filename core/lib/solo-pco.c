@@ -2,17 +2,18 @@
 #include "lib/solo-conf.h"
 
 clock_time_t
-solo_pco_adjust(clock_time_t expiry, uint8_t degree)
+solo_pco_adjust(clock_time_t my_offset, uint8_t degree)
 {
-  clock_time_t current_time = clock_time();
-  clock_time_t new_expiry;
+  clock_time_t your_offset = clock_time() % INTERVAL;
+  clock_time_t distance = (my_offset + INTERVAL - your_offset) % INTERVAL;
   
   degree = (degree == 0) ? 1 : degree;
-  clock_time_t target_expiry = current_time + INTERVAL / (degree + 1);
+  clock_time_t target_distance = INTERVAL / (degree + 1);
   
-  if (expiry >= target_expiry) return 0;
-  
-  new_expiry = (expiry + target_expiry) / 2;
+  if (distance >= target_distance) return 0;
 
-  return new_expiry - expiry;
+  clock_time_t new_offset = 
+    (my_offset + (target_distance - distance) / 2) % INTERVAL;
+
+  return (new_offset + INTERVAL - my_offset) % INTERVAL;
 }

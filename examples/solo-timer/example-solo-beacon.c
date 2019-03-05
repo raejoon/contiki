@@ -1,4 +1,5 @@
 #include "contiki.h"
+#include "lib/solo-timer.h"
 #include "lib/solo-beacon.h"
 #include <stdio.h>
 
@@ -13,6 +14,7 @@ PROCESS_THREAD(example_solo_beacon_process, ev, data)
   PROCESS_EXITHANDLER(solo_beacon_destroy(&sb);)
 
   PROCESS_BEGIN();
+  solo_timer_destroy();
   
   solo_beacon_init(&sb);
   solo_beacon_start(&sb);

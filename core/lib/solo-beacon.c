@@ -17,6 +17,11 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from);
 static void
 ctimer_callback(void* ptr)
 {
+
+#if DEBUG
+  printf("Broadcast sent.\n");
+#endif
+
   struct solo_beacon* sb = (struct solo_beacon*) ptr;
 
   sb->beacon_offset = clock_time() % INTERVAL;
@@ -26,8 +31,11 @@ ctimer_callback(void* ptr)
   packetbuf_copyfrom(&send_buf, sizeof(send_buf));
   broadcast_send(&(sb->broadcast));
   
-  sb->beacon_expiry += INTERVAL;
-  ctimer_set(&(sb->ct), sb->beacon_expiry - clock_time(), ctimer_callback, sb);
+  ctimer_stop(&(sb->ct));
+  clock_time_t time_left = 
+    (sb->beacon_offset + INTERVAL - clock_time() % INTERVAL) % INTERVAL;
+  if (time_left == 0) time_left = INTERVAL;
+  ctimer_set(&(sb->ct), time_left, ctimer_callback, sb);
 }
 
 
@@ -44,10 +52,15 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   solo_neighbor_dump(&sb->neighbors);
 #endif
   
-  clock_time_t delay = solo_pco_adjust(sb->beacon_expiry, recv_buf.degree);
-  sb->beacon_expiry += delay;
+  clock_time_t delay = solo_pco_adjust(sb->beacon_offset, recv_buf.degree);
+  clock_time_t time_left = 
+    (sb->beacon_offset + INTERVAL - clock_time() % INTERVAL) % INTERVAL;
+  sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
+
+  printf("time_left: %u, delay: %u\n", time_left, delay);
+
   ctimer_stop(&(sb->ct));
-  ctimer_set(&(sb->ct), sb->beacon_expiry - clock_time(), ctimer_callback, sb);
+  ctimer_set(&(sb->ct), time_left + delay, ctimer_callback, sb);
 }
 
 void
@@ -65,14 +78,13 @@ void
 solo_beacon_start(struct solo_beacon *sb)
 {
   sb->beacon_offset = clock_time() % INTERVAL;
-  sb->beacon_expiry = clock_time() + INTERVAL;
-  printf("after: %u\n", sb->beacon_expiry - clock_time());
-  ctimer_set(&(sb->ct), sb->beacon_expiry - clock_time(), ctimer_callback, sb);
+  ctimer_set(&(sb->ct), INTERVAL, ctimer_callback, sb);
 }
 
 void
 solo_beacon_destroy(struct solo_beacon *sb)
 {
+  ctimer_stop(&(sb->ct));
   broadcast_close(&(sb->broadcast));
   solo_neighbor_destroy(&sb->neighbors);
 }
