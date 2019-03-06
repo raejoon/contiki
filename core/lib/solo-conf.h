@@ -3,9 +3,24 @@
 
 #include "contiki.h"
 
+#ifndef SOLO_CONF_ENABLE
+#define SOLO_CONF_ENABLE 0
+#endif
+
+#ifndef SOLO_CONF_INTERVAL
 #define INTERVAL (30 * CLOCK_SECOND)
+#endif
+
+#ifndef SOLO_CONF_INTERVAL_THRESHOLD
 #define SOLO_CONF_INTERVAL_THRESHOLD (2*INTERVAL)
+#endif
+
+#ifndef SOLO_CONF_TIMESTAMP_THRESHOLD
 #define SOLO_CONF_TIMESTAMP_THRESHOLD (4*INTERVAL)
+#endif
+
+#ifndef SOLO_CONF_BETA
 #define SOLO_CONF_BETA 20
+#endif 
 
 #endif

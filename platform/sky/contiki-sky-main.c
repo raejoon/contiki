@@ -400,7 +400,9 @@ main(int argc, char **argv)
   /*
    * raejoon: Initialize Solo timers
    */
+#if SOLO_CONF_ENABLE
   solo_timer_init();
+#endif
 
   
   watchdog_start();

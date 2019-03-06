@@ -1,5 +1,6 @@
 CONTIKI = ../..
-all: example-neighbor-map example-solo-beacon example-solo-scheduler example-solo-timer
+all: example-solo-beacon example-solo-scheduler example-solo-timer
 
 CONTIKI_WITH_RIME=1
+CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 include $(CONTIKI)/Makefile.include

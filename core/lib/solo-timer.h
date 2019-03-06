@@ -1,6 +1,7 @@
 #ifndef SOLO_TIMER_H
 #define SOLO_TIMER_H_
 
+#include "lib/solo-conf.h"
 #include "lib/solo-task.h"
 #include "lib/solo-beacon.h"
 #include "lib/solo-scheduler.h"
