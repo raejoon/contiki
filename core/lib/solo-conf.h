@@ -4,5 +4,8 @@
 #include "contiki.h"
 
 #define INTERVAL (30 * CLOCK_SECOND)
+#define SOLO_CONF_INTERVAL_THRESHOLD (2*INTERVAL)
+#define SOLO_CONF_TIMESTAMP_THRESHOLD (4*INTERVAL)
+#define SOLO_CONF_BETA 20
 
 #endif
