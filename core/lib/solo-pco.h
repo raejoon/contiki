@@ -4,7 +4,8 @@
 #include "contiki-conf.h"
 #include "solo-neighbor.h"
 
-clock_time_t solo_pco_adjust(clock_time_t my_offset, uint8_t degree, 
+clock_time_t solo_pco_adjust(clock_time_t recv_time, clock_time_t my_offset, 
+                             uint8_t degree, 
                              struct solo_neighbor_map* neighbors);
 
 #endif

@@ -16,7 +16,7 @@
 #endif
 
 #ifndef SOLO_CONF_INTERVAL
-#define INTERVAL (30 * CLOCK_SECOND)
+#define INTERVAL (32 * CLOCK_SECOND)
 #define BEACON_INTERVAL INTERVAL 
 #endif
 

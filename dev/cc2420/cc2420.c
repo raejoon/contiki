@@ -91,6 +91,8 @@ enum write_ram_order {
 #define PRINTF(...) do {} while (0)
 #endif
 
+#include <stdio.h>
+
 #define DEBUG_LEDS DEBUG
 #undef LEDS_ON
 #undef LEDS_OFF

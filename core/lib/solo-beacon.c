@@ -3,12 +3,17 @@
 #include "stdio.h"
 #include "lib/solo-conf.h"
 #include "lib/solo-pco.h"
+#include "sys/rtimer.h"
+#include <assert.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
 struct solo_beacon_data {
   uint8_t id;
   uint8_t degree;
+  uint8_t padding[32];
+  uint16_t solo_timestamp;
+  uint16_t phy_timestamp;
 };
 
 static struct solo_beacon_data send_buf, recv_buf;
@@ -17,9 +22,9 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from);
 static void
 ctimer_callback(void* ptr)
 {
-
+  rtimer_clock_t rtimer_now = rtimer_arch_now();
 #if DEBUG
-  printf("Broadcast sent.\n");
+  printf("Broadcast send. rtimer: %u\n", (unsigned int)rtimer_now);
 #endif
 
   struct solo_beacon* sb = (struct solo_beacon*) ptr;
@@ -28,7 +33,10 @@ ctimer_callback(void* ptr)
 
   send_buf.id = sb->id;
   send_buf.degree = solo_neighbor_size(&sb->neighbors);
+  send_buf.solo_timestamp = rtimer_now;
   packetbuf_copyfrom(&send_buf, sizeof(send_buf));
+  packetbuf_set_attr(PACKETBUF_ATTR_PACKET_TYPE,
+                     PACKETBUF_ATTR_PACKET_TYPE_TIMESTAMP);
   broadcast_send(&(sb->broadcast));
   
   ctimer_stop(&(sb->ct));
@@ -43,19 +51,33 @@ static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
   struct solo_beacon *sb = (struct solo_beacon *) c;
-  clock_time_t delay = 0;
+  clock_time_t recv_st = clock_time();
 
+  memcpy(&recv_buf, packetbuf_dataptr(), sizeof(recv_buf));
+  //printf("phy_timestamp: %u, solo_timestamp: %u \n", 
+  //       recv_buf.phy_timestamp, recv_buf.solo_timestamp);
+  uint32_t recv_delay_rt = recv_buf.phy_timestamp;
+  if (recv_buf.phy_timestamp < recv_buf.solo_timestamp) {
+    recv_delay_rt += ((uint16_t)(-1) - recv_buf.solo_timestamp);
+  } else {
+    recv_delay_rt -= recv_buf.solo_timestamp;
+  }
+  clock_time_t recv_delay_st = recv_delay_rt * CLOCK_SECOND / RTIMER_SECOND;
+  recv_st -= recv_delay_st;
+  
 #if DEBUG
-  printf("Broadcast received.\n");
+  printf("Broadcast received from %u. recv_delay: %u\n", 
+         recv_buf.id, (uint16_t) recv_delay_st);
   solo_neighbor_dump(&sb->neighbors);
 #endif
-  
-  memcpy(&recv_buf, packetbuf_dataptr(), sizeof(recv_buf));
-  solo_neighbor_update(&sb->neighbors, recv_buf.id, clock_time());
-  solo_neighbor_flush(&sb->neighbors, clock_time());
 
+  solo_neighbor_update(&sb->neighbors, recv_buf.id, recv_st);
+  solo_neighbor_flush(&sb->neighbors, recv_st);
+
+  clock_time_t delay = 0;
 #if SOLO_CONF_PCO_ENABLE
-  delay = solo_pco_adjust(sb->beacon_offset, recv_buf.degree, &sb->neighbors);
+  delay = solo_pco_adjust(recv_st, sb->beacon_offset, 
+                          recv_buf.degree, &sb->neighbors);
   delay = (delay < 10)? 0 : delay;
   sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
 #endif

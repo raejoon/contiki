@@ -125,7 +125,7 @@ solo_neighbor_next(struct solo_neighbor_map* neighbors, clock_time_t offset)
   struct solo_neighbor* curr;
   for (curr = (struct solo_neighbor*) list_head(neighbors->neighbor_list);
        curr != NULL;
-       curr = (struct solo_neighbor*) list_item_next(neighbors->neighbor_list)) {
+       curr = (struct solo_neighbor*) list_item_next(curr)) {
     neighbor_offset = curr->last_timestamp % BEACON_INTERVAL;
     neighbor_diff = 
       (neighbor_offset + BEACON_INTERVAL - offset) % BEACON_INTERVAL;
