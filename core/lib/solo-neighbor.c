@@ -55,7 +55,7 @@ solo_neighbor_update(struct solo_neighbor_map* neighbors,
     n = memb_alloc(&neighbor_memb);
     if (n == NULL) return -1;
     n->id = id;
-    n->average_interval = INTERVAL;
+    n->average_interval = BEACON_INTERVAL;
     list_add(neighbors->neighbor_list, n);
   } else {
     if (timestamp < n->last_timestamp) {
@@ -111,6 +111,33 @@ solo_neighbor_dump(struct solo_neighbor_map* neighbors)
 int solo_neighbor_size(struct solo_neighbor_map* neighbors)
 {
   return list_length(neighbors->neighbor_list);
+}
+
+clock_time_t 
+solo_neighbor_next(struct solo_neighbor_map* neighbors, clock_time_t offset)
+{
+  clock_time_t cand_offset, cand_diff;
+  clock_time_t neighbor_offset, neighbor_diff;
+  
+  cand_offset = offset;
+  cand_diff = BEACON_INTERVAL;
+
+  struct solo_neighbor* curr;
+  for (curr = (struct solo_neighbor*) list_head(neighbors->neighbor_list);
+       curr != NULL;
+       curr = (struct solo_neighbor*) list_item_next(neighbors->neighbor_list)) {
+    neighbor_offset = curr->last_timestamp % BEACON_INTERVAL;
+    neighbor_diff = 
+      (neighbor_offset + BEACON_INTERVAL - offset) % BEACON_INTERVAL;
+    neighbor_diff = (neighbor_diff == 0)? BEACON_INTERVAL : neighbor_diff;
+
+    if (neighbor_diff < cand_diff) {
+      cand_offset = neighbor_offset;
+      cand_diff = neighbor_diff;
+    }
+  }
+  
+  return cand_offset;
 }
 
 void solo_neighbor_destroy(struct solo_neighbor_map* neighbors)

@@ -43,25 +43,26 @@ static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
   struct solo_beacon *sb = (struct solo_beacon *) c;
-  memcpy(&recv_buf, packetbuf_dataptr(), sizeof(recv_buf));
-  solo_neighbor_update(&sb->neighbors, recv_buf.id, clock_time());
-  solo_neighbor_flush(&sb->neighbors, clock_time());
-
-  clock_time_t delay = solo_pco_adjust(sb->beacon_offset, recv_buf.degree);
+  clock_time_t delay = 0;
 
 #if DEBUG
   printf("Broadcast received.\n");
   solo_neighbor_dump(&sb->neighbors);
-  printf("PCO delay: %u\n", (unsigned int) delay);
 #endif
   
+  memcpy(&recv_buf, packetbuf_dataptr(), sizeof(recv_buf));
+  solo_neighbor_update(&sb->neighbors, recv_buf.id, clock_time());
+  solo_neighbor_flush(&sb->neighbors, clock_time());
+
+#if SOLO_CONF_PCO_ENABLE
+  delay = solo_pco_adjust(sb->beacon_offset, recv_buf.degree, &sb->neighbors);
   delay = (delay < 10)? 0 : delay;
+  sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
+#endif
 
   ctimer_stop(&(sb->ct));
-
   clock_time_t time_left = 
     (sb->beacon_offset + INTERVAL - clock_time() % INTERVAL) % INTERVAL;
-  sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
   ctimer_set(&(sb->ct), time_left + delay, ctimer_callback, sb);
 }
 
