@@ -35,7 +35,7 @@ ctimer_callback(void* ptr)
 {
   rtimer_clock_t rtimer_now = rtimer_arch_now();
 #if DEBUG
-  printf("Broadcast send. rtimer: %u\n", (unsigned int)rtimer_now);
+  printf("[solo-beacon] Broadcast send. rtimer: %u\n", (unsigned int)rtimer_now);
 #endif
   struct solo_beacon* sb = (struct solo_beacon*) ptr;
   sb->beacon_offset = clock_time() % INTERVAL;
@@ -72,7 +72,7 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   memcpy(&recv_buf, packetbuf_dataptr(), sizeof(recv_buf));
   
 #if DEBUG
-  printf("Broadcast received from %u\n", recv_buf.id);
+  printf("[solo-beacon] Broadcast received from %u\n", recv_buf.id);
 #endif
 
   recv_st = calibrate_recv_time(recv_st);
