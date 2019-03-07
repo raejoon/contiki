@@ -8,7 +8,7 @@
 #define INTERVAL BEACON_INTERVAL
 #endif
 
-#define DEBUG 1
+#define DEBUG 0
 
 clock_time_t
 solo_pco_adjust(clock_time_t recv_time, clock_time_t my_offset, uint8_t degree,
@@ -21,9 +21,6 @@ solo_pco_adjust(clock_time_t recv_time, clock_time_t my_offset, uint8_t degree,
   clock_time_t target_distance = INTERVAL / (degree + 1);
   
   if (distance >= target_distance) {
-#if DEBUG
-    //printf("solo-pco: Received beacon is behind me\n");
-#endif
     return 0;
   }
 

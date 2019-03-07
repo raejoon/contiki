@@ -3,6 +3,8 @@
 #include "lib/memb.h"
 #include "stdio.h"
 
+#define DEBUG 0
+
 #define MAX_NEIGHBORS 32
 
 #ifdef SOLO_CONF_BETA
@@ -90,6 +92,9 @@ solo_neighbor_flush(struct solo_neighbor_map* neighbors,
     }
     curr = next;
   }
+#if DEBUG
+  solo_neighbor_dump(neighbors);
+#endif
 }
 
 void 

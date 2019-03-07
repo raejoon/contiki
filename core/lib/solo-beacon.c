@@ -20,23 +20,27 @@ static struct solo_beacon_data send_buf, recv_buf;
 static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from);
 
 static void
+construct_packet(struct solo_beacon* sb, rtimer_clock_t now_rt)
+{
+  send_buf.id = sb->id;
+  send_buf.degree = solo_neighbor_size(&sb->neighbors);
+  send_buf.solo_timestamp = now_rt;
+  packetbuf_copyfrom(&send_buf, sizeof(send_buf));
+  packetbuf_set_attr(PACKETBUF_ATTR_PACKET_TYPE,
+                     PACKETBUF_ATTR_PACKET_TYPE_TIMESTAMP);
+}
+
+static void
 ctimer_callback(void* ptr)
 {
   rtimer_clock_t rtimer_now = rtimer_arch_now();
 #if DEBUG
   printf("Broadcast send. rtimer: %u\n", (unsigned int)rtimer_now);
 #endif
-
   struct solo_beacon* sb = (struct solo_beacon*) ptr;
-
   sb->beacon_offset = clock_time() % INTERVAL;
 
-  send_buf.id = sb->id;
-  send_buf.degree = solo_neighbor_size(&sb->neighbors);
-  send_buf.solo_timestamp = rtimer_now;
-  packetbuf_copyfrom(&send_buf, sizeof(send_buf));
-  packetbuf_set_attr(PACKETBUF_ATTR_PACKET_TYPE,
-                     PACKETBUF_ATTR_PACKET_TYPE_TIMESTAMP);
+  construct_packet(sb, rtimer_now);
   broadcast_send(&(sb->broadcast));
   
   ctimer_stop(&(sb->ct));
@@ -46,6 +50,18 @@ ctimer_callback(void* ptr)
   ctimer_set(&(sb->ct), time_left, ctimer_callback, sb);
 }
 
+static clock_time_t
+calibrate_recv_time(clock_time_t recv_time_st)
+{
+  uint32_t recv_delay_rt = recv_buf.phy_timestamp;
+  if (recv_buf.phy_timestamp < recv_buf.solo_timestamp) {
+    recv_delay_rt += ((uint16_t)(-1) - recv_buf.solo_timestamp);
+  } else {
+    recv_delay_rt -= recv_buf.solo_timestamp;
+  }
+  clock_time_t recv_delay_st = recv_delay_rt * CLOCK_SECOND / RTIMER_SECOND;
+  return recv_time_st - recv_delay_st;
+}
 
 static void 
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
@@ -54,26 +70,14 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   clock_time_t recv_st = clock_time();
 
   memcpy(&recv_buf, packetbuf_dataptr(), sizeof(recv_buf));
-  //printf("phy_timestamp: %u, solo_timestamp: %u \n", 
-  //       recv_buf.phy_timestamp, recv_buf.solo_timestamp);
-  uint32_t recv_delay_rt = recv_buf.phy_timestamp;
-  if (recv_buf.phy_timestamp < recv_buf.solo_timestamp) {
-    recv_delay_rt += ((uint16_t)(-1) - recv_buf.solo_timestamp);
-  } else {
-    recv_delay_rt -= recv_buf.solo_timestamp;
-  }
-  clock_time_t recv_delay_st = recv_delay_rt * CLOCK_SECOND / RTIMER_SECOND;
-  recv_st -= recv_delay_st;
   
 #if DEBUG
-  printf("Broadcast received from %u. recv_delay: %u\n", 
-         recv_buf.id, (uint16_t) recv_delay_st);
-  solo_neighbor_dump(&sb->neighbors);
+  printf("Broadcast received from %u\n", recv_buf.id);
 #endif
 
+  recv_st = calibrate_recv_time(recv_st);
   solo_neighbor_update(&sb->neighbors, recv_buf.id, recv_st);
   solo_neighbor_flush(&sb->neighbors, recv_st);
-
 
   clock_time_t delay = 0;
 #if SOLO_CONF_PCO_ENABLE
