@@ -74,6 +74,7 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   solo_neighbor_update(&sb->neighbors, recv_buf.id, recv_st);
   solo_neighbor_flush(&sb->neighbors, recv_st);
 
+
   clock_time_t delay = 0;
 #if SOLO_CONF_PCO_ENABLE
   delay = solo_pco_adjust(recv_st, sb->beacon_offset, 
