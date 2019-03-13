@@ -4,6 +4,7 @@
 #include "lib/solo-conf.h"
 #include "lib/solo-pco.h"
 #include "sys/rtimer.h"
+#include "lib/random.h"
 #include <assert.h>
 
 #define DEBUG 1
@@ -11,7 +12,8 @@
 struct solo_beacon_data {
   uint8_t id;
   uint8_t degree;
-  uint8_t padding[32];
+  struct solo_vector pathvec;
+  struct solo_vector loopvec;
   uint16_t solo_timestamp;
   uint16_t phy_timestamp;
 };
@@ -25,6 +27,10 @@ construct_packet(struct solo_beacon* sb, rtimer_clock_t now_rt)
   send_buf.id = sb->id;
   send_buf.degree = solo_neighbor_size(&sb->neighbors);
   send_buf.solo_timestamp = now_rt;
+  
+  solo_vector_copy(&send_buf.pathvec, &sb->pathvec);
+  solo_vector_copy(&send_buf.loopvec, &sb->loopvec);
+  
   packetbuf_copyfrom(&send_buf, sizeof(send_buf));
   packetbuf_set_attr(PACKETBUF_ATTR_PACKET_TYPE,
                      PACKETBUF_ATTR_PACKET_TYPE_TIMESTAMP);
@@ -44,9 +50,18 @@ ctimer_callback(void* ptr)
   broadcast_send(&(sb->broadcast));
   
   ctimer_stop(&(sb->ct));
-  clock_time_t time_left = 
-    (sb->beacon_offset + INTERVAL - clock_time() % INTERVAL) % INTERVAL;
-  if (time_left == 0) time_left = INTERVAL;
+  clock_time_t time_left;
+  
+  if (sb->reset == 1) {
+    time_left = random_rand() % INTERVAL + INTERVAL / 2;
+    sb->reset = 0;
+    solo_vector_init(&sb->pathvec);
+    solo_vector_init(&sb->loopvec);
+  } else {
+    time_left = 
+      (sb->beacon_offset + INTERVAL - clock_time() % INTERVAL) % INTERVAL;
+    if (time_left == 0) time_left = INTERVAL;
+  }
   ctimer_set(&(sb->ct), time_left, ctimer_callback, sb);
 }
 
@@ -74,18 +89,39 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 #if DEBUG
   printf("[solo-beacon] Broadcast received from %u\n", recv_buf.id);
 #endif
-
-  recv_st = calibrate_recv_time(recv_st);
-  solo_neighbor_update(&sb->neighbors, recv_buf.id, recv_st);
-  solo_neighbor_flush(&sb->neighbors, recv_st);
-
+  
   clock_time_t delay = 0;
+  
+  if (sb->id == solo_vector_pop(&recv_buf.loopvec)) {
+    solo_vector_copy(&sb->loopvec, &recv_buf.loopvec);
+    sb->reset = 1;
+  } else {
+    recv_st = calibrate_recv_time(recv_st);
+    solo_neighbor_update(&sb->neighbors, recv_buf.id, recv_st);
+    solo_neighbor_flush(&sb->neighbors, recv_st);
 #if SOLO_CONF_PCO_ENABLE
-  delay = solo_pco_adjust(recv_st, sb->beacon_offset, 
-                          recv_buf.degree, &sb->neighbors);
-  delay = (delay < 10)? 0 : delay;
-  sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
+    delay = solo_pco_adjust(recv_st, sb->beacon_offset, 
+                            recv_buf.degree, &sb->neighbors);
+    delay = (delay < 10)? 0 : delay;
+    sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
+
+    if (delay != 0) {
+      solo_vector_copy(&sb->pathvec, &recv_buf.pathvec);
+      int loop_start = solo_vector_find(&sb->pathvec, sb->id);
+      if (loop_start != -1) {
+        loop_start = (loop_start + 1) % BUFFER_SIZE;
+        solo_vector_copy(&sb->loopvec, &sb->pathvec);
+        sb->loopvec.length -= (loop_start - sb->loopvec.start_ind) % BUFFER_SIZE;
+        sb->loopvec.start_ind = loop_start;
+      }
+      solo_vector_init(&sb->pathvec);
+      sb->reset = 1;
+    }
+    else {
+      solo_vector_init(&sb->pathvec);
+    }
 #endif
+  }
 
   ctimer_stop(&(sb->ct));
   clock_time_t time_left = 
@@ -102,6 +138,10 @@ solo_beacon_init(struct solo_beacon *sb)
   broadcast_open(&(sb->broadcast), 129, &(sb->broadcast_call)); 
   
   solo_neighbor_init(&sb->neighbors);
+  solo_vector_init(&sb->pathvec);
+  solo_vector_init(&sb->loopvec);
+
+  sb->reset = 0;
 }
 
 void

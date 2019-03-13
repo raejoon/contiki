@@ -5,6 +5,7 @@
 #include "net/rime/broadcast.h"
 #include "sys/ctimer.h"
 #include "lib/solo-neighbor.h"
+#include "lib/solo-vector.h"
 #include "stdlib.h"
 
 struct solo_beacon {
@@ -14,6 +15,10 @@ struct solo_beacon {
   uint8_t id;
   clock_time_t beacon_offset;
   struct solo_neighbor_map neighbors;
+
+  struct solo_vector pathvec;
+  struct solo_vector loopvec;
+  uint8_t reset;
   
   struct ctimer ct;
 };

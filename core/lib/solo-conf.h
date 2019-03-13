@@ -32,4 +32,6 @@
 #define SOLO_CONF_BETA 20
 #endif 
 
+#define SOLO_VECTOR_SIZE 16
+
 #endif
