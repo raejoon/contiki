@@ -19,6 +19,7 @@ struct solo_beacon {
   struct solo_vector pathvec;
   struct solo_vector loopvec;
   uint8_t reset;
+  uint8_t accept;
   
   struct ctimer ct;
 };

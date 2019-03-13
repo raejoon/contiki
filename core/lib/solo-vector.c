@@ -1,5 +1,6 @@
 #include "string.h"
 #include "solo-vector.h"
+#include <stdio.h>
 
 void 
 solo_vector_init(struct solo_vector* vec)
@@ -48,3 +49,14 @@ solo_vector_find(struct solo_vector* vec, uint8_t val)
   return -1;
 }
 
+void 
+solo_vector_dump(struct solo_vector* vec)
+{
+  int cnt = 0;
+  while (cnt < vec->length) {
+    int ind = (vec->start_ind + cnt) % BUFFER_SIZE;
+    printf("%d ", vec->buffer[ind]);
+    cnt++;
+  }
+  printf("\n");
+}

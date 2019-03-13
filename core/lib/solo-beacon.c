@@ -44,6 +44,8 @@ ctimer_callback(void* ptr)
   printf("[solo-beacon] Broadcast send. rtimer: %u\n", (unsigned int)rtimer_now);
 #endif
   struct solo_beacon* sb = (struct solo_beacon*) ptr;
+
+  if (sb->accept == 0) sb->accept = 1;
   sb->beacon_offset = clock_time() % INTERVAL;
 
   construct_packet(sb, rtimer_now);
@@ -53,10 +55,12 @@ ctimer_callback(void* ptr)
   clock_time_t time_left;
   
   if (sb->reset == 1) {
-    time_left = random_rand() % INTERVAL + INTERVAL / 2;
-    sb->reset = 0;
+    time_left = random_rand() % INTERVAL;
+    printf("[solo-beacon] Reset next schedule %d\n", time_left);
     solo_vector_init(&sb->pathvec);
     solo_vector_init(&sb->loopvec);
+    sb->accept = 0;
+    sb->reset = 0;
   } else {
     time_left = 
       (sb->beacon_offset + INTERVAL - clock_time() % INTERVAL) % INTERVAL;
@@ -82,8 +86,9 @@ static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
   struct solo_beacon *sb = (struct solo_beacon *) c;
-  clock_time_t recv_st = clock_time();
+  if (sb->accept != 1) return;
 
+  clock_time_t recv_st = clock_time();
   memcpy(&recv_buf, packetbuf_dataptr(), sizeof(recv_buf));
   
 #if DEBUG
@@ -94,6 +99,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   
   if (sb->id == solo_vector_pop(&recv_buf.loopvec)) {
     solo_vector_copy(&sb->loopvec, &recv_buf.loopvec);
+    printf("[solo-beacon] loopvec (%d) ", sb->loopvec.length);
+    solo_vector_dump(&sb->loopvec);
     sb->reset = 1;
   } else {
     recv_st = calibrate_recv_time(recv_st);
@@ -102,20 +109,26 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 #if SOLO_CONF_PCO_ENABLE
     delay = solo_pco_adjust(recv_st, sb->beacon_offset, 
                             recv_buf.degree, &sb->neighbors);
-    delay = (delay < 10)? 0 : delay;
+    delay = (delay < 5)? 0 : delay;
     sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
 
     if (delay != 0) {
+      printf("[solo-beacon] Pushed\n");
       solo_vector_copy(&sb->pathvec, &recv_buf.pathvec);
+      printf("[solo-beacon] pathvec (%d) ", sb->pathvec.length);
+      solo_vector_dump(&sb->pathvec);
       int loop_start = solo_vector_find(&sb->pathvec, sb->id);
       if (loop_start != -1) {
+        printf("[solo-beacon] Loop detected!\n");
         loop_start = (loop_start + 1) % BUFFER_SIZE;
         solo_vector_copy(&sb->loopvec, &sb->pathvec);
         sb->loopvec.length -= (loop_start - sb->loopvec.start_ind) % BUFFER_SIZE;
         sb->loopvec.start_ind = loop_start;
+        solo_vector_init(&sb->pathvec);
+        sb->reset = 1;
+      } else {
+        solo_vector_append(&sb->pathvec, recv_buf.id);
       }
-      solo_vector_init(&sb->pathvec);
-      sb->reset = 1;
     }
     else {
       solo_vector_init(&sb->pathvec);
@@ -142,13 +155,18 @@ solo_beacon_init(struct solo_beacon *sb)
   solo_vector_init(&sb->loopvec);
 
   sb->reset = 0;
+  sb->accept = 0;
 }
 
 void
 solo_beacon_start(struct solo_beacon *sb)
 {
-  sb->beacon_offset = clock_time() % INTERVAL;
-  ctimer_set(&(sb->ct), INTERVAL, ctimer_callback, sb);
+  sb->beacon_offset = random_rand() % INTERVAL;
+  //sb->beacon_offset = clock_time() % INTERVAL;
+  clock_time_t time_left = 
+    (sb->beacon_offset + INTERVAL - clock_time() % INTERVAL) % INTERVAL;
+  ctimer_set(&(sb->ct), time_left, ctimer_callback, sb);
+  sb->accept = 1;
 }
 
 void

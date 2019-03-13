@@ -21,5 +21,6 @@ struct solo_vector* solo_vector_copy(struct solo_vector* dest,
                                      struct solo_vector* src);
 void solo_vector_append(struct solo_vector* vec, uint8_t val);
 int solo_vector_find(struct solo_vector* vec, uint8_t val);
+void solo_vector_dump(struct solo_vector* vec);
 
 #endif

@@ -40,7 +40,7 @@ solo_pco_adjust(clock_time_t recv_time, clock_time_t my_offset, uint8_t degree,
 #endif
 
   clock_time_t new_offset = 
-    (my_offset + (target_distance - distance) / 2) % INTERVAL;
+    (my_offset + (target_distance - distance) * 20 / 100) % INTERVAL;
 
   return (new_offset + INTERVAL - my_offset) % INTERVAL;
 }
