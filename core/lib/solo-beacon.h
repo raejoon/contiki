@@ -16,8 +16,10 @@ struct solo_beacon {
   clock_time_t beacon_offset;
   struct solo_neighbor_map neighbors;
 
+#if SOLO_CONF_LOOP_DETECT_ENABLE
   struct solo_vector pathvec;
   struct solo_vector loopvec;
+#endif 
   uint8_t reset;
   uint8_t accept;
   
