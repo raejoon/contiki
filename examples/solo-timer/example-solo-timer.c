@@ -24,12 +24,15 @@ PROCESS_THREAD(example_solo_timer_process, ev, data)
 
   PROCESS_BEGIN();
   
-  task1 = solo_timer_add(20*CLOCK_SECOND, 0, ss_callback, &id1);
-  printf("Solo timer task added: %p\n", task1);
-  task2 = solo_timer_add(30*CLOCK_SECOND, 0, ss_callback, &id2);
-  printf("Solo timer task added: %p\n", task2);
-  task3 = solo_timer_add(20*CLOCK_SECOND, 10*CLOCK_SECOND, ss_callback, &id3);
-  printf("Solo timer task added: %p\n", task3);
+  task1 = solo_timer_add(BEACON_INTERVAL, 0, ss_callback, &id1);
+  printf("Solo timer task added: 1,%lu,%lu\n", 
+         BEACON_INTERVAL, (long unsigned int)0);
+  task2 = solo_timer_add(BEACON_INTERVAL, BEACON_INTERVAL/4, ss_callback, &id2);
+  printf("Solo timer task added: 2,%lu,%lu\n", 
+         BEACON_INTERVAL, BEACON_INTERVAL/4);
+  task3 = solo_timer_add(BEACON_INTERVAL, BEACON_INTERVAL/2, ss_callback, &id3);
+  printf("Solo timer task added: 3,%lu,%lu\n", 
+         BEACON_INTERVAL, BEACON_INTERVAL/2);
   solo_task_start(task1);
   solo_task_start(task2);
   solo_task_start(task3);

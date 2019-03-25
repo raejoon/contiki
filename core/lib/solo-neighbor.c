@@ -98,19 +98,23 @@ solo_neighbor_flush(struct solo_neighbor_map* neighbors,
 }
 
 void 
-solo_neighbor_dump(struct solo_neighbor_map* neighbors)
+solo_neighbor_dump(struct solo_neighbor_map* neighbors, int verbose)
 {
   struct solo_neighbor* curr;
   curr = (struct solo_neighbor *) list_head(neighbors->neighbor_list);
-  printf("---- neighbor map ----\n");
+  if (verbose == 0) printf("(");
   while (curr != NULL) {
-    printf("id: %u, last_timestamp: %u, average_interval: %u\n",
-           (unsigned int) curr->id, 
-           (unsigned int) curr->last_timestamp, 
-           (unsigned int) curr->average_interval);
+    if (verbose == 0) {
+      printf("%u,", (unsigned int) curr->id);
+    } else {
+      printf("id: %u, last_timestamp: %u, average_interval: %u\n",
+             (unsigned int) curr->id, 
+             (unsigned int) curr->last_timestamp, 
+             (unsigned int) curr->average_interval);
+    }
     curr = (struct solo_neighbor*) list_item_next(curr);
   }
-  printf("----------------------\n");
+  if (verbose == 0) printf(")");
 }
 
 int solo_neighbor_size(struct solo_neighbor_map* neighbors)

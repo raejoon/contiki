@@ -47,7 +47,7 @@ ctimer_callback(void* ptr)
 {
   rtimer_clock_t rtimer_now = rtimer_arch_now();
 #if DEBUG
-  printf("[solo-beacon] Broadcast send. rtimer: %u\n", (unsigned int)rtimer_now);
+  printf("[solo-beacon] Broadcast send.\n");
 #endif
   struct solo_beacon* sb = (struct solo_beacon*) ptr;
 
@@ -95,6 +95,12 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   recv_st = calibrate_recv_time(recv_st);
   solo_neighbor_update(&sb->neighbors, recv_buf.id, recv_st);
   solo_neighbor_flush(&sb->neighbors, recv_st);
+
+#if DEBUG
+  printf("[solo-beacon] Neighbors: ");
+  solo_neighbor_dump(&sb->neighbors, 0);
+#endif 
+
 #if SOLO_CONF_PCO_ENABLE
   delay = solo_pco_adjust(recv_st, sb->beacon_offset, 
                           recv_buf.degree, &sb->neighbors);
