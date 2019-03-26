@@ -13,6 +13,7 @@ struct solo_beacon {
   struct broadcast_callbacks broadcast_call;
 
   uint8_t id;
+  uint16_t seqno;
   clock_time_t beacon_offset;
   struct solo_neighbor_map neighbors;
 

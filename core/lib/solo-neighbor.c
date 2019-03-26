@@ -114,7 +114,7 @@ solo_neighbor_dump(struct solo_neighbor_map* neighbors, int verbose)
     }
     curr = (struct solo_neighbor*) list_item_next(curr);
   }
-  if (verbose == 0) printf(")");
+  if (verbose == 0) printf(")\n");
 }
 
 int solo_neighbor_size(struct solo_neighbor_map* neighbors)

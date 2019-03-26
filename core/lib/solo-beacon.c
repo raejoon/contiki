@@ -12,6 +12,7 @@
 struct solo_beacon_data {
   uint8_t id;
   uint8_t degree;
+  uint16_t seqno;
 #if SOLO_CONF_LOOP_DETECT_ENABLE
   struct solo_vector pathvec;
   struct solo_vector loopvec;
@@ -30,6 +31,7 @@ construct_packet(struct solo_beacon* sb, rtimer_clock_t now_rt)
 {
   send_buf.id = sb->id;
   send_buf.degree = solo_neighbor_size(&sb->neighbors);
+  send_buf.seqno = sb->seqno;
   send_buf.solo_timestamp = now_rt;
  
 #if SOLO_CONF_LOOP_DETECT_ENABLE
@@ -46,16 +48,18 @@ static void
 ctimer_callback(void* ptr)
 {
   rtimer_clock_t rtimer_now = rtimer_arch_now();
-#if DEBUG
-  printf("[solo-beacon] Broadcast send.\n");
-#endif
   struct solo_beacon* sb = (struct solo_beacon*) ptr;
+
+#if DEBUG
+  printf("[solo-beacon] Broadcast send. (%u)\n", sb->seqno);
+#endif
 
   if (sb->accept == 0) sb->accept = 1;
   sb->beacon_offset = clock_time() % INTERVAL;
 
   construct_packet(sb, rtimer_now);
   broadcast_send(&(sb->broadcast));
+  sb->seqno++;
   
   ctimer_stop(&(sb->ct));
   clock_time_t time_left;
@@ -88,7 +92,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   memcpy(&recv_buf, packetbuf_dataptr(), sizeof(recv_buf));
   
 #if DEBUG
-  printf("[solo-beacon] Broadcast received from %u\n", recv_buf.id);
+  printf("[solo-beacon] Broadcast received from %u (%u)\n", 
+         recv_buf.id, recv_buf.seqno);
 #endif
   
   clock_time_t delay = 0;
@@ -148,6 +153,7 @@ solo_beacon_init(struct solo_beacon *sb)
 
   sb->reset = 0;
   sb->accept = 0;
+  sb->seqno = 1;
 }
 
 void

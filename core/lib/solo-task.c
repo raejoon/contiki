@@ -1,6 +1,9 @@
 #include "lib/solo-task.h"
 #include "lib/solo-timer.h"
 #include "lib/solo-conf.h"
+#include "stdio.h"
+
+#define DEBUG 1
 
 #define MAX_TASKS 8
 
@@ -13,9 +16,16 @@ solo_task_expiry(struct solo_task* task)
   clock_time_t offset = 
     (task->scheduler->st->beacon).beacon_offset * task->interval / INTERVAL 
       + task->offset;
-
-  unsigned int round = clock_time() / task->interval + 1;
+  
+  clock_time_t current = clock_time();
+  unsigned int round = current / task->interval + 1;
   clock_time_t expiry = round * task->interval + offset;
+#if DEBUG
+  printf("[solo-task] task: %p, beacon_offset: %u, task_offset: %u, current: %u, expiry: %u\n",
+         task, (unsigned int)(task->scheduler->st->beacon).beacon_offset, 
+         (unsigned int)task->offset, 
+         (unsigned int)current, (unsigned int)expiry);
+#endif
 
   return expiry;
 }
@@ -41,6 +51,10 @@ solo_task_init(struct solo_scheduler* ss,
   task->offset = offset;
   task->callback = callback;
   task->callback_args = callback_args;
+
+#if DEBUG
+  printf("[solo-task] Initialized task: %p\n", task);
+#endif
   return task;
 }
 
