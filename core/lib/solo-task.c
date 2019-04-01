@@ -3,9 +3,9 @@
 #include "lib/solo-conf.h"
 #include "stdio.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
-#define MAX_TASKS 8
+#define MAX_TASKS 32
 
 // Memory block to allocate task objects
 MEMB(task_memb, struct solo_task, MAX_TASKS);

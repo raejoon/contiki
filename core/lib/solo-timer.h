@@ -15,6 +15,7 @@ void solo_timer_init();
 void solo_timer_destroy();
 
 // API
+void solo_timer_service_start();
 struct solo_task* solo_timer_add(clock_time_t interval, clock_time_t offset,
                                  void (*callback)(void*), void* callback_args);
 void solo_timer_remove(struct solo_task* task);

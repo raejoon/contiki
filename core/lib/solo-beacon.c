@@ -98,12 +98,16 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   
   clock_time_t delay = 0;
   recv_st = calibrate_recv_time(recv_st);
-  solo_neighbor_update(&sb->neighbors, recv_buf.id, recv_st);
-  solo_neighbor_flush(&sb->neighbors, recv_st);
+  
+  int added = solo_neighbor_update(&sb->neighbors, recv_buf.id, recv_st);
+  int removed = solo_neighbor_flush(&sb->neighbors, recv_st);
 
 #if DEBUG
-  printf("[solo-beacon] Neighbors: ");
-  solo_neighbor_dump(&sb->neighbors, 0);
+  if (added || removed) 
+  {
+    printf("[solo-beacon] Neighbors: ");
+    solo_neighbor_dump(&sb->neighbors, 0);
+  }
 #endif 
 
 #if SOLO_CONF_PCO_ENABLE
@@ -112,12 +116,23 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   delay = (delay < 5)? 0 : delay;
   sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
 
-#if SOLO_CONF_LOOP_DETECT_ENABLE
   if (delay != 0) {
+#if DEBUG
+    printf("[solo-beacon] adjustment required: %lu by %d deg %d\n", 
+           delay, (int) recv_buf.id, (int) recv_buf.degree);
+#endif
+
+#if SOLO_CONF_LOOP_DETECT_ENABLE
     solo_vector_copy(&sb->pathvec, &recv_buf.pathvec);
+#if DEBUG
+    printf("[solo-beacon] pathvec:");
     solo_vector_dump(&sb->pathvec);
+#endif
     int loop_start = solo_vector_find(&sb->pathvec, sb->id);
     if (loop_start != -1) {
+#if DEBUG
+      printf("[solo-beacon] loop detected\n");
+#endif
       solo_beacon_init(sb);
       solo_beacon_start(sb);
       return;
@@ -127,8 +142,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   }
   else {
     solo_vector_init(&sb->pathvec);
-  }
 #endif
+  }
 #endif
 
   ctimer_stop(&(sb->ct));

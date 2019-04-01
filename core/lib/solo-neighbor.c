@@ -10,7 +10,7 @@
 #ifdef SOLO_CONF_BETA
 #define BETA SOLO_CONF_BETA
 #else
-#define BETA 20
+#define BETA 10
 #endif
 
 #ifdef SOLO_CONF_INTERVAL_THRESHOLD 
@@ -50,12 +50,14 @@ solo_neighbor_update(struct solo_neighbor_map* neighbors,
                      uint8_t id, clock_time_t timestamp)
 {
   struct solo_neighbor* n;
+  int added = 0;
   uint32_t last_interval;
   
   n = solo_neighbor_find(neighbors, id);
   if (n == NULL) {
     n = memb_alloc(&neighbor_memb);
     if (n == NULL) return -1;
+    added = 1;
     n->id = id;
     n->average_interval = BEACON_INTERVAL;
     list_add(neighbors->neighbor_list, n);
@@ -72,29 +74,33 @@ solo_neighbor_update(struct solo_neighbor_map* neighbors,
   }
   
   n->last_timestamp = timestamp;
-  return 0;
+  return added;
 }
 
-void 
+int
 solo_neighbor_flush(struct solo_neighbor_map* neighbors, 
                     clock_time_t current_time)
 {
   struct solo_neighbor *curr, *next;
+  int removed = 0;
   curr = (struct solo_neighbor *) list_head(neighbors->neighbor_list);
   while (curr != NULL) {
     next = (struct solo_neighbor*) list_item_next(curr);
     if (curr->average_interval > INTERVAL_THRESHOLD) {
       list_remove(neighbors->neighbor_list, curr);
       memb_free(&neighbor_memb, curr);
+      removed = 1;
     } else if (curr->last_timestamp + TIMESTAMP_THRESHOLD < current_time) {
       list_remove(neighbors->neighbor_list, curr);
       memb_free(&neighbor_memb, curr);
+      removed = 1;
     }
     curr = next;
   }
 #if DEBUG
   solo_neighbor_dump(neighbors);
 #endif
+  return removed;
 }
 
 void 

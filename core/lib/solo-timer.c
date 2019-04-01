@@ -3,13 +3,19 @@
 
 static struct solo_timer st;
 
+void solo_timer_service_start()
+{
+  solo_beacon_start(&st.beacon);
+}
+
 void 
 solo_timer_init()
 {
   solo_beacon_init(&st.beacon);
   solo_scheduler_init(&st.scheduler, &st);
-  
-  solo_beacon_start(&st.beacon);
+#if SOLO_CONF_START_AT_BOOT
+  solo_timer_service_start();
+#endif
 }
 
 struct solo_task*
