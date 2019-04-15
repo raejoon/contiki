@@ -51,7 +51,8 @@ ctimer_callback(void* ptr)
   struct solo_beacon* sb = (struct solo_beacon*) ptr;
 
 #if DEBUG
-  printf("[solo-beacon] Broadcast send. (%u)\n", sb->seqno);
+  printf("[solo-beacon] Broadcast send. (%u) (%u)\n", 
+			   sb->seqno, (unsigned int)clock_time());
 #endif
 
   if (sb->accept == 0) sb->accept = 1;
@@ -79,6 +80,13 @@ calibrate_recv_time(clock_time_t recv_time_st)
     recv_delay_rt -= recv_buf.solo_timestamp;
   }
   clock_time_t recv_delay_st = recv_delay_rt * CLOCK_SECOND / RTIMER_SECOND;
+#if DEBUG
+  printf("[solo-beacon] sfd: %u, solo: %u, rtdelay: %u\n", 
+      (unsigned int) recv_buf.phy_timestamp, 
+      (unsigned int) recv_buf.solo_timestamp,
+      (unsigned int) recv_delay_rt);
+  printf("[solo-beacon] mac delay: %u\n", (unsigned int) recv_delay_st);
+#endif 
   return recv_time_st - recv_delay_st;
 }
 
@@ -113,7 +121,7 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 #if SOLO_CONF_PCO_ENABLE
   delay = solo_pco_adjust(recv_st, sb->beacon_offset, 
                           recv_buf.degree, &sb->neighbors);
-  delay = (delay < 5)? 0 : delay;
+  //delay = (delay < 2)? 0 : delay;
   sb->beacon_offset = (sb->beacon_offset + delay) % INTERVAL;
 
   if (delay != 0) {

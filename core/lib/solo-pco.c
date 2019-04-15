@@ -8,7 +8,7 @@
 #define INTERVAL BEACON_INTERVAL
 #endif
 
-#define DEBUG 0
+#define DEBUG 1
 
 clock_time_t
 solo_pco_adjust(clock_time_t recv_time, clock_time_t my_offset, uint8_t degree,
@@ -19,6 +19,10 @@ solo_pco_adjust(clock_time_t recv_time, clock_time_t my_offset, uint8_t degree,
   
   degree = (degree == 0) ? 1 : degree;
   clock_time_t target_distance = INTERVAL / (degree + 1);
+#if DEBUG
+  printf("recv_time: %u, distance: %u, target distance: %u\n", (unsigned int)
+      recv_time, (unsigned int) distance, (unsigned int) target_distance);
+#endif
   
   if (distance >= target_distance) {
     return 0;
@@ -39,8 +43,15 @@ solo_pco_adjust(clock_time_t recv_time, clock_time_t my_offset, uint8_t degree,
   assert(target_distance <= INTERVAL / 2);
 #endif
 
-  clock_time_t new_offset = 
+  clock_time_t new_offset;
+  if (target_distance > distance + 5) {
+  new_offset = 
     (my_offset + (target_distance - distance) * 20 / 100) % INTERVAL;
+  } else {
+    new_offset = 
+      (my_offset + (target_distance - distance) * 90 / 100) % INTERVAL;
+  }
+    
 
   return (new_offset + INTERVAL - my_offset) % INTERVAL;
 }
