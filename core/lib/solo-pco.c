@@ -45,11 +45,11 @@ solo_pco_adjust(clock_time_t recv_time, clock_time_t my_offset, uint8_t degree,
 
   clock_time_t new_offset;
   if (target_distance > distance + 5) {
-  new_offset = 
-    (my_offset + (target_distance - distance) * 20 / 100) % INTERVAL;
+    new_offset = 
+      (my_offset + (target_distance - distance) * 20 / 100) % INTERVAL;
   } else {
     new_offset = 
-      (my_offset + (target_distance - distance) * 50 / 100) % INTERVAL;
+      (my_offset + (target_distance - distance) * 20 / 100) % INTERVAL;
   }
     
 

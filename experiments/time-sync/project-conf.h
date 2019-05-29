@@ -1,0 +1,4 @@
+#define WITH_TINYOS_AUTO_IDS 1
+
+#define SOLO_CONF_ENABLE 0
+

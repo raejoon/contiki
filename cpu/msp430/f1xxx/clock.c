@@ -208,6 +208,11 @@ clock_wait(clock_time_t i)
   while(clock_time() - start < (clock_time_t)i);
 }
 /*---------------------------------------------------------------------------*/
+void clock_zero(void)
+{
+  count = 0;
+}
+/*---------------------------------------------------------------------------*/
 void
 clock_set_seconds(unsigned long sec)
 {
