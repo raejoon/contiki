@@ -3,8 +3,6 @@
 #include "lib/solo-timer.h"
 #include "sys/node-id.h"
 #include "dev/watchdog.h"
-#include "cpu/msp430/cc2420-arch-sfd.h"
-#include "sys/clock.h"
 #include <stdio.h>
 
 // LED1
@@ -32,38 +30,39 @@
 #define P23_CLEAR() (P2IFG &= ~BV(3))
 #define P23_TRIGGERED() (P2IFG & BV(3))
 
-PROCESS(join_process, "node join experiment");
-AUTOSTART_PROCESSES(&join_process);
+
+PROCESS(sync_process, "time sync experiment");
+AUTOSTART_PROCESSES(&sync_process);
 
 static clock_time_t start;
-static int toggle[3] = {0, 0, 0};
-static int task_id[3] = {0, 1, 2};
-static int interval[3] = {384, 1792, 1280};
-static int ind;
-static int second_count = 0;
+static int toggle = 0;
+static struct ctimer ct;
 
 static void callback(void *ptr)
 {
-  int tid = *(int*)ptr;
-  printf("[Task] callback for task id: %d, systime: %u\n",
-         tid, (unsigned int) clock_time());
-  if (toggle[tid] == 0) {
-    toggle[tid] = 1;
+  if (toggle == 0) {
+    toggle = 1;
+    P67_1();
   } else {
-    toggle[tid] = 0;
+    toggle = 0;
+    P67_0();
   }
+  printf("timer callback. systime: %u, rtime: %u\n",
+         (unsigned int) clock_time(), (unsigned int) rtimer_arch_now());
+  ctimer_reset(&ct);
 }
 
-static struct solo_task *task;
-
-PROCESS_THREAD(join_process, ev, data)
+PROCESS_THREAD(sync_process, ev, data)
 {
   static struct etimer et;
   
   PROCESS_BEGIN();
   watchdog_stop();
 
-  printf("Beacon interval: %d\n", (int)SOLO_CONF_INTERVAL);
+  // Enable LED gpio
+  P67_OUT();
+  P67_SEL();
+  P67_0();
 
   // Enable timesync gpio
   P23_IN();
@@ -74,34 +73,18 @@ PROCESS_THREAD(join_process, ev, data)
   // Give time to gpio actuation (1 second)
   start = clock_time();
   while (clock_time() - start < CLOCK_SECOND) {};
+  printf("Before clock init. systime: %u, rtime: %u\n",
+         (unsigned int) clock_time(), (unsigned int) rtimer_arch_now());
   while (1) { if (P23_TRIGGERED()) break; }
   clock_zero();
-  printf("Clock reset: %u\n", (unsigned int) clock_time());
- 
-  // Setup every node except 28
-  if (node_id != 6) {
-    solo_timer_service_start();
-    for (ind = 0; ind < 3; ind++) {
-      task = solo_timer_add(interval[ind], 0, callback, &(task_id[ind]));
-      printf("Solo timer task added: %d, %d, %d\n",
-             task_id[ind], interval[ind], 0);
-      solo_task_start(task); 
-    }
-  }
+  printf("After clock init. systime: %u, rtime: %u\n",
+         (unsigned int) clock_time(), (unsigned int) rtimer_arch_now());
+  
+  ctimer_set(&ct, CLOCK_SECOND, callback, NULL);
 
   while (1) {
     etimer_set(&et, CLOCK_SECOND);
-
-    if (second_count == 200 && node_id == 6) {
-      solo_timer_service_start();
-    }
-    
-    if (second_count == 400 && node_id == 6) {
-      solo_timer_destroy();
-    }
-
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-    second_count += 1;
   }
 
   PROCESS_END();

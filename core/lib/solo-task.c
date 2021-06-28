@@ -13,20 +13,15 @@ MEMB(task_memb, struct solo_task, MAX_TASKS);
 static clock_time_t
 solo_task_expiry(struct solo_task* task)
 {
+  clock_time_t current = clock_time();
   clock_time_t offset = 
     (task->scheduler->st->beacon).beacon_offset * task->interval / INTERVAL 
       + task->offset;
   
-  clock_time_t current = clock_time();
-  unsigned int round = current / task->interval + 1;
-  clock_time_t expiry = round * task->interval + offset;
-#if DEBUG
-  printf("[solo-task] task: %p, beacon_offset: %u, task_offset: %u, current: %u, expiry: %u\n",
-         task, (unsigned int)(task->scheduler->st->beacon).beacon_offset, 
-         (unsigned int)task->offset, 
-         (unsigned int)current, (unsigned int)expiry);
-#endif
-
+  int round = 0;
+  if (current > offset) round = (current - offset) / task->interval;
+  clock_time_t expiry = (round + 1) * task->interval + offset;
+  
   return expiry;
 }
 
